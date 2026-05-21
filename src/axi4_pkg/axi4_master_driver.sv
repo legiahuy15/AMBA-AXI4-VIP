@@ -193,9 +193,9 @@ class axi4_master_driver extends uvm_driver #(axi4_transaction);
             do @(vif.master_cb);
             while (!vif.master_cb.RVALID);
 
-            // Capture beat data
-            tr.data[i] = vif.master_cb.RDATA;
-            tr.resp    = axi4_resp_e'(vif.master_cb.RRESP);
+            // Capture beat data + per-beat response
+            tr.data[i]  = vif.master_cb.RDATA;
+            tr.rresp[i] = axi4_resp_e'(vif.master_cb.RRESP);
 
             // Check RLAST on final beat
             if (i == tr.len && !vif.master_cb.RLAST)

@@ -33,8 +33,11 @@ class axi4_transaction extends uvm_sequence_item;
     rand bit [AXI4_DATA_WIDTH-1:0]          data[];     // One entry per beat
     rand bit [AXI4_STRB_WIDTH-1:0]          strb[];     // One entry per beat
 
-    // Response (B channel for write, R channel per beat for read)
+    // Write response — B channel (1 per burst)
     rand axi4_resp_e                        resp;
+
+    // Read response — R channel (1 per beat)
+    rand axi4_resp_e                        rresp[];
 
     // =========================================================================
     // UVM utility macro
@@ -54,6 +57,7 @@ class axi4_transaction extends uvm_sequence_item;
         `uvm_field_array_int(              data,   UVM_ALL_ON)
         `uvm_field_array_int(              strb,   UVM_ALL_ON)
         `uvm_field_enum(axi4_resp_e,       resp,   UVM_ALL_ON)
+        // Note: rresp[] uses enum array — no built-in macro, handled in do_copy/compare
     `uvm_object_utils_end
 
     // =========================================================================
@@ -67,6 +71,11 @@ class axi4_transaction extends uvm_sequence_item;
 
     constraint c_strb_size {
         strb.size() == len + 1;
+    }
+
+    // Read response array size must match burst length
+    constraint c_rresp_size {
+        rresp.size() == len + 1;
     }
 
     // Burst size must not exceed data bus width
@@ -136,10 +145,15 @@ class axi4_transaction extends uvm_sequence_item;
         s = {s, $sformatf("\n SIZE   = %s (%0d bytes/beat)", size.name(), 1 << size)};
         s = {s, $sformatf("\n BURST  = %s",     burst.name())};
         s = {s, $sformatf("\n LOCK   = %s",     lock.name())};
-        s = {s, $sformatf("\n RESP   = %s",     resp.name())};
+        if (dir == AXI4_WRITE) begin
+            s = {s, $sformatf("\n RESP   = %s (B channel)", resp.name())};
+        end
         s = {s, $sformatf("\n DATA[%0d] = {",   data.size())};
         foreach (data[i]) begin
-            s = {s, $sformatf("\n   [%0d] 0x%08h  STRB=0b%0b", i, data[i], strb[i])};
+            if (dir == AXI4_WRITE)
+                s = {s, $sformatf("\n   [%0d] 0x%08h  STRB=0b%0b", i, data[i], strb[i])};
+            else
+                s = {s, $sformatf("\n   [%0d] 0x%08h  RRESP=%s", i, data[i], rresp[i].name())};
         end
         s = {s, "\n }"};
         s = {s, "\n---------------------------------------\n"};
