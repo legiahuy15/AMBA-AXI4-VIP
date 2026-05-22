@@ -57,7 +57,8 @@ class axi4_transaction extends uvm_sequence_item;
         `uvm_field_array_int(              data,   UVM_ALL_ON)
         `uvm_field_array_int(              strb,   UVM_ALL_ON)
         `uvm_field_enum(axi4_resp_e,       resp,   UVM_ALL_ON)
-        // Note: rresp[] uses enum array — no built-in macro, handled in do_copy/compare
+        // Note: rresp[] uses enum array — no built-in macro for enum dynamic
+        //       arrays, so do_copy/do_compare/do_print handle it manually.
     `uvm_object_utils_end
 
     // =========================================================================
@@ -99,6 +100,22 @@ class axi4_transaction extends uvm_sequence_item;
         (burst == AXI4_BURST_FIXED) -> len <= 15;
     }
 
+    // INCR burst: AXI4 allows up to 256 beats (len 0-255), no extra constraint needed.
+    // But we keep an explicit one for clarity and future configurability.
+    constraint c_incr_len {
+        (burst == AXI4_BURST_INCR) -> len <= 255;
+    }
+
+    // Default response: OKAY for write resp (slave will override as needed)
+    constraint c_resp_default {
+        soft resp == AXI4_RESP_OKAY;
+    }
+
+    // Default rresp: OKAY for all read beats (slave will override as needed)
+    constraint c_rresp_default {
+        foreach (rresp[i]) soft rresp[i] == AXI4_RESP_OKAY;
+    }
+
     // Read transactions: strobe is not used, set to all-1s
     constraint c_read_strb {
         if (dir == AXI4_READ) {
@@ -133,6 +150,61 @@ class axi4_transaction extends uvm_sequence_item;
     endfunction : new
 
     // =========================================================================
+    // do_copy — deep copy including rresp[] enum array
+    // =========================================================================
+    function void do_copy(uvm_object rhs);
+        axi4_transaction rhs_t;
+        super.do_copy(rhs);     // copies all `uvm_field_*` registered fields
+        if (!$cast(rhs_t, rhs))
+            `uvm_fatal(get_type_name(), "do_copy: cast failed")
+        // Manual copy of rresp[] (enum array, no built-in macro)
+        this.rresp = new[rhs_t.rresp.size()];
+        foreach (rhs_t.rresp[i])
+            this.rresp[i] = rhs_t.rresp[i];
+    endfunction : do_copy
+
+    // =========================================================================
+    // do_compare — compare including rresp[] enum array
+    // =========================================================================
+    function bit do_compare(uvm_object rhs, uvm_comparer comparer);
+        axi4_transaction rhs_t;
+        bit result;
+        result = super.do_compare(rhs, comparer);   // compare all registered fields
+        if (!$cast(rhs_t, rhs))
+            `uvm_fatal(get_type_name(), "do_compare: cast failed")
+        // Compare rresp[] sizes
+        if (this.rresp.size() != rhs_t.rresp.size()) begin
+            `uvm_info(get_type_name(),
+                      $sformatf("rresp size mismatch: %0d vs %0d",
+                                this.rresp.size(), rhs_t.rresp.size()), UVM_LOW)
+            return 0;
+        end
+        // Compare rresp[] elements
+        foreach (this.rresp[i]) begin
+            if (this.rresp[i] != rhs_t.rresp[i]) begin
+                `uvm_info(get_type_name(),
+                          $sformatf("rresp[%0d] mismatch: %s vs %s",
+                                    i, this.rresp[i].name(), rhs_t.rresp[i].name()), UVM_LOW)
+                result = 0;
+            end
+        end
+        return result;
+    endfunction : do_compare
+
+    // =========================================================================
+    // do_print — include rresp[] in UVM print output
+    // =========================================================================
+    function void do_print(uvm_printer printer);
+        super.do_print(printer);    // prints all registered fields
+        // Manually print rresp[] enum array
+        printer.print_generic("rresp.size()", "int", $bits(rresp.size()),
+                              $sformatf("%0d", rresp.size()));
+        foreach (rresp[i])
+            printer.print_generic($sformatf("rresp[%0d]", i), "axi4_resp_e", 2,
+                                  rresp[i].name());
+    endfunction : do_print
+
+    // =========================================================================
     // convert2string — human-readable transaction summary for debug
     // =========================================================================
     function string convert2string();
@@ -145,6 +217,10 @@ class axi4_transaction extends uvm_sequence_item;
         s = {s, $sformatf("\n SIZE   = %s (%0d bytes/beat)", size.name(), 1 << size)};
         s = {s, $sformatf("\n BURST  = %s",     burst.name())};
         s = {s, $sformatf("\n LOCK   = %s",     lock.name())};
+        s = {s, $sformatf("\n CACHE  = 0b%04b", cache)};
+        s = {s, $sformatf("\n PROT   = 0b%03b", prot)};
+        s = {s, $sformatf("\n QOS    = 0x%0h",  qos)};
+        s = {s, $sformatf("\n REGION = 0x%0h",  region)};
         if (dir == AXI4_WRITE) begin
             s = {s, $sformatf("\n RESP   = %s (B channel)", resp.name())};
         end
@@ -153,7 +229,8 @@ class axi4_transaction extends uvm_sequence_item;
             if (dir == AXI4_WRITE)
                 s = {s, $sformatf("\n   [%0d] 0x%08h  STRB=0b%0b", i, data[i], strb[i])};
             else
-                s = {s, $sformatf("\n   [%0d] 0x%08h  RRESP=%s", i, data[i], rresp[i].name())};
+                s = {s, $sformatf("\n   [%0d] 0x%08h  RRESP=%s", i, data[i],
+                                  (i < rresp.size()) ? rresp[i].name() : "N/A")};
         end
         s = {s, "\n }"};
         s = {s, "\n---------------------------------------\n"};

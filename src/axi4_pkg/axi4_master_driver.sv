@@ -37,19 +37,32 @@ class axi4_master_driver extends uvm_driver #(axi4_transaction);
     // Run phase — main driver loop
     // =========================================================================
     task run_phase(uvm_phase phase);
-        // Deassert all outputs while in reset
-        reset_signals();
-        @(posedge vif.rst_n);
-        `uvm_info(get_type_name(), "Reset deasserted — master driver active", UVM_MEDIUM)
-
+        // Outer loop: recover from reset at any time during operation.
+        // If reset is asserted mid-transaction, the fork is killed and
+        // the driver re-initialises cleanly.
         forever begin
-            axi4_transaction tr;
-            seq_item_port.get_next_item(tr);
-            `uvm_info(get_type_name(),
-                      $sformatf("Driving %s  ID=0x%0h  ADDR=0x%08h  LEN=%0d",
-                                tr.dir.name(), tr.id, tr.addr, tr.len), UVM_MEDIUM)
-            drive_transaction(tr);
-            seq_item_port.item_done();
+            reset_signals();
+            @(posedge vif.rst_n);
+            `uvm_info(get_type_name(), "Reset deasserted — master driver active", UVM_MEDIUM)
+
+            fork
+                begin : drive_loop
+                    forever begin
+                        axi4_transaction tr;
+                        seq_item_port.get_next_item(tr);
+                        `uvm_info(get_type_name(),
+                                  $sformatf("Driving %s  ID=0x%0h  ADDR=0x%08h  LEN=%0d",
+                                            tr.dir.name(), tr.id, tr.addr, tr.len), UVM_MEDIUM)
+                        drive_transaction(tr);
+                        seq_item_port.item_done();
+                    end
+                end
+                begin : rst_watch
+                    @(negedge vif.rst_n);
+                    `uvm_info(get_type_name(), "Reset asserted — aborting", UVM_MEDIUM)
+                end
+            join_any
+            disable fork;
         end
     endtask : run_phase
 

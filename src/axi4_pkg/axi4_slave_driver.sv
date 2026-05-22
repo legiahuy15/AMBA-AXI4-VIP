@@ -24,6 +24,17 @@ class axi4_slave_driver extends uvm_driver #(axi4_transaction);
     bit [7:0] mem [bit [AXI4_ADDR_WIDTH-1:0]];
 
     // =========================================================================
+    // Configurable delays — set via config_db or directly for back-pressure
+    //   ready_delay : cycles before asserting xREADY (simulates slow slave)
+    //   resp_delay  : cycles before driving B/R response
+    //   When max = 0, no delay is inserted.
+    // =========================================================================
+    int unsigned ready_delay_min = 0;
+    int unsigned ready_delay_max = 0;
+    int unsigned resp_delay_min  = 0;
+    int unsigned resp_delay_max  = 0;
+
+    // =========================================================================
     // Constructor
     // =========================================================================
     function new(string name, uvm_component parent);
@@ -37,20 +48,37 @@ class axi4_slave_driver extends uvm_driver #(axi4_transaction);
         super.build_phase(phase);
         if (!uvm_config_db#(virtual axi4_if)::get(this, "", "vif", vif))
             `uvm_fatal(get_type_name(), "Virtual interface not found in config_db")
+        // Optional delay configuration — tests can set these via config_db
+        void'(uvm_config_db#(int unsigned)::get(this, "", "ready_delay_min", ready_delay_min));
+        void'(uvm_config_db#(int unsigned)::get(this, "", "ready_delay_max", ready_delay_max));
+        void'(uvm_config_db#(int unsigned)::get(this, "", "resp_delay_min",  resp_delay_min));
+        void'(uvm_config_db#(int unsigned)::get(this, "", "resp_delay_max",  resp_delay_max));
     endfunction : build_phase
 
     // =========================================================================
     // Run phase — reactive slave: fork write & read handlers
     // =========================================================================
     task run_phase(uvm_phase phase);
-        reset_signals();
-        @(posedge vif.rst_n);
-        `uvm_info(get_type_name(), "Reset deasserted — slave driver active", UVM_MEDIUM)
+        // Outer loop: recover from reset at any time during operation
+        forever begin
+            reset_signals();
+            @(posedge vif.rst_n);
+            `uvm_info(get_type_name(), "Reset deasserted — slave driver active", UVM_MEDIUM)
 
-        fork
-            handle_writes();
-            handle_reads();
-        join
+            fork
+                begin : slave_loop
+                    fork
+                        handle_writes();
+                        handle_reads();
+                    join
+                end
+                begin : rst_watch
+                    @(negedge vif.rst_n);
+                    `uvm_info(get_type_name(), "Reset asserted — aborting", UVM_MEDIUM)
+                end
+            join_any
+            disable fork;
+        end
     endtask : run_phase
 
     // =========================================================================
@@ -65,6 +93,25 @@ class axi4_slave_driver extends uvm_driver #(axi4_transaction);
         vif.slave_cb.RVALID  <= 1'b0;
         vif.slave_cb.RLAST   <= 1'b0;
     endtask : reset_signals
+
+    // =========================================================================
+    // Delay helpers — insert random back-pressure / response latency
+    // =========================================================================
+    task rand_ready_delay();
+        int unsigned delay;
+        if (ready_delay_max > 0) begin
+            delay = $urandom_range(ready_delay_max, ready_delay_min);
+            repeat (delay) @(vif.slave_cb);
+        end
+    endtask : rand_ready_delay
+
+    task rand_resp_delay();
+        int unsigned delay;
+        if (resp_delay_max > 0) begin
+            delay = $urandom_range(resp_delay_max, resp_delay_min);
+            repeat (delay) @(vif.slave_cb);
+        end
+    endtask : rand_resp_delay
 
     // =========================================================================
     // Handle Writes — forever loop processing write requests
@@ -92,7 +139,8 @@ class axi4_slave_driver extends uvm_driver #(axi4_transaction);
             aw_size  = vif.slave_cb.AWSIZE;
             aw_burst = vif.slave_cb.AWBURST;
 
-            // Assert AWREADY to complete handshake
+            // Assert AWREADY to complete handshake (with optional delay)
+            rand_ready_delay();
             vif.slave_cb.AWREADY <= 1'b1;
             @(vif.slave_cb);
             vif.slave_cb.AWREADY <= 1'b0;
@@ -127,13 +175,15 @@ class axi4_slave_driver extends uvm_driver #(axi4_transaction);
                         mem[beat_addr + b] = wdata[b*8 +: 8];
                 end
 
-                // Assert WREADY to complete handshake
+                // Assert WREADY to complete handshake (with optional delay)
+                rand_ready_delay();
                 vif.slave_cb.WREADY <= 1'b1;
                 @(vif.slave_cb);
                 vif.slave_cb.WREADY <= 1'b0;
             end
 
-            // ----- B response -----
+            // ----- B response (with optional delay) -----
+            rand_resp_delay();
             @(vif.slave_cb);
             vif.slave_cb.BID    <= aw_id;
             vif.slave_cb.BRESP  <= AXI4_RESP_OKAY;
@@ -175,7 +225,8 @@ class axi4_slave_driver extends uvm_driver #(axi4_transaction);
             ar_size  = vif.slave_cb.ARSIZE;
             ar_burst = vif.slave_cb.ARBURST;
 
-            // Assert ARREADY to complete handshake
+            // Assert ARREADY to complete handshake (with optional delay)
+            rand_ready_delay();
             vif.slave_cb.ARREADY <= 1'b1;
             @(vif.slave_cb);
             vif.slave_cb.ARREADY <= 1'b0;
@@ -197,7 +248,8 @@ class axi4_slave_driver extends uvm_driver #(axi4_transaction);
                         rdata[b*8 +: 8] = mem[beat_addr + b];
                 end
 
-                // Drive R channel
+                // Drive R channel (with optional response delay)
+                rand_resp_delay();
                 @(vif.slave_cb);
                 vif.slave_cb.RID    <= ar_id;
                 vif.slave_cb.RDATA  <= rdata;
