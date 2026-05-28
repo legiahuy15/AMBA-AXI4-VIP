@@ -23,7 +23,7 @@ class axi4_slave_agent extends uvm_agent;
     axi4_slave_driver    drv;       // Created only in ACTIVE mode
     axi4_slave_monitor   mon;       // Always created
 
-    // Virtual interface handle (propagated to children)
+    // Virtual interface handle
     virtual axi4_if vif;
 
     // =========================================================================
@@ -43,7 +43,7 @@ class axi4_slave_agent extends uvm_agent;
     function void build_phase(uvm_phase phase);
         super.build_phase(phase);
 
-        // ---- Config ----
+        // Config
         if (!uvm_config_db#(axi4_agent_config)::get(this, "", "cfg", cfg)) begin
             `uvm_info(get_type_name(),
                       "No agent config found — using defaults (ACTIVE, coverage ON)",
@@ -54,17 +54,17 @@ class axi4_slave_agent extends uvm_agent;
         // Sync UVM built-in is_active field with our config
         is_active = cfg.is_active;
 
-        // ---- Virtual Interface ----
+        // Virtual Interface
         if (!uvm_config_db#(virtual axi4_if)::get(this, "", "vif", vif))
             `uvm_fatal(get_type_name(), "Virtual interface not found in config_db")
 
         // Propagate vif to children via config_db
         uvm_config_db#(virtual axi4_if)::set(this, "mon", "vif", vif);
 
-        // ---- Monitor (always created) ----
+        // Monitor (always created)
         mon = axi4_slave_monitor::type_id::create("mon", this);
 
-        // ---- Driver + Sequencer (ACTIVE mode only) ----
+        // Driver + Sequencer (ACTIVE mode only)
         if (cfg.is_active == UVM_ACTIVE) begin
             // Propagate vif and delay config to driver
             uvm_config_db#(virtual axi4_if)::set(this, "drv", "vif", vif);
