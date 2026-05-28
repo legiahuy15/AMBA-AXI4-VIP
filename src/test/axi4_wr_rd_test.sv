@@ -6,7 +6,7 @@
 //               Sends multiple write bursts to different addresses, then
 //               reads back from each address to verify data integrity
 //               through the slave memory model and scoreboard.
-//               This file is `included inside axi4_pkg.sv.
+//               This file is `included inside axi4_test_pkg.sv.
 //==============================================================================
 
 `ifndef AXI4_WR_RD_TEST_INCLUDED_

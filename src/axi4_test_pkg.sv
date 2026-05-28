@@ -4,13 +4,6 @@
 // Author      : Huy Le
 // Description : Test package for AXI4 VIP.
 //               Imports axi4_pkg (VIP core) and includes all test classes.
-//               Separated from axi4_pkg to keep VIP reusable across projects.
-//
-//               Compile order:
-//                 1. axi4_if.sv      (interface)
-//                 2. axi4_pkg.sv     (VIP core)
-//                 3. axi4_test_pkg.sv (this file)
-//                 4. tb_top.sv       (testbench top)
 //==============================================================================
 
 `ifndef AXI4_TEST_PKG_INCLUDED_

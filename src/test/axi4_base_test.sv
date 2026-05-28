@@ -8,7 +8,7 @@
 //               Only provides build, end_of_elaboration, and report phases.
 //               Derived tests implement their own run_phase with specific
 //               sequences and test scenarios.
-//               This file is `included inside axi4_pkg.sv.
+//               This file is `included inside axi4_test_pkg.sv.
 //==============================================================================
 
 `ifndef AXI4_BASE_TEST_INCLUDED_
