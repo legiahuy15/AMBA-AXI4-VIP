@@ -8,6 +8,8 @@
 //               Signal widths use parameters from axi4_types.sv.
 //==============================================================================
 
+`timescale 1ns/1ps
+
 `ifndef AXI4_IF_INCLUDED_
 `define AXI4_IF_INCLUDED_
 

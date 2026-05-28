@@ -41,7 +41,7 @@ TEST_LIST     ?= axi4_wr_rd_test
 # ==============================================================================
 # 3. Simulator Flags & Conditional Options
 # ==============================================================================
-VLOG_FLAGS = -sv -work work +incdir+$(SRC_DIR) -l $(LOG_DIR)/compile.log
+VLOG_FLAGS = -sv -work work -timescale 1ns/1ps +incdir+$(SRC_DIR) -l $(LOG_DIR)/compile.log
 VOPT_FLAGS = +acc -work work -l $(LOG_DIR)/optimize.log
 VSIM_FLAGS = -c -work work -l $(LOG_DIR)/run.log
 
