@@ -163,11 +163,6 @@ class axi4_slave_driver extends uvm_driver #(axi4_transaction);
                 wdata = vif.slave_cb.WDATA;
                 wstrb = vif.slave_cb.WSTRB;
 
-                // Check WLAST
-                if (beat == aw_len && !vif.slave_cb.WLAST)
-                    `uvm_error(get_type_name(),
-                               $sformatf("WLAST not asserted on final beat %0d", beat))
-
                 // Store data to memory (byte-level write with WSTRB)
                 beat_addr = calc_beat_addr(aw_addr, beat, aw_size, aw_burst, aw_len);
                 for (int b = 0; b < AXI4_STRB_WIDTH; b++) begin
@@ -180,6 +175,14 @@ class axi4_slave_driver extends uvm_driver #(axi4_transaction);
                 vif.slave_cb.WREADY <= 1'b1;
                 @(vif.slave_cb);
                 vif.slave_cb.WREADY <= 1'b0;
+
+                // Check WLAST at handshake point (WVALID && WREADY both high)
+                if (beat == aw_len && !vif.slave_cb.WLAST)
+                    `uvm_error(get_type_name(),
+                               $sformatf("WLAST not asserted on final beat %0d", beat))
+                if (beat != aw_len && vif.slave_cb.WLAST)
+                    `uvm_error(get_type_name(),
+                               $sformatf("Unexpected WLAST on beat %0d of %0d", beat, aw_len))
             end
 
             // ----- B response (with optional delay) -----
