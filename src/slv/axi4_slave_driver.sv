@@ -115,74 +115,84 @@ class axi4_slave_driver extends uvm_driver #(axi4_transaction);
 
     // =========================================================================
     // Handle Writes — forever loop processing write requests
-    //   1. Wait for AW handshake, capture address info
-    //   2. Collect all W beats, store to memory
-    //   3. Send B response
+    //   AW and W channels are handled in parallel (fork/join) to support
+    //   all valid AXI4 orderings: AW||W, AW->W, and W->AW.
+    //   W beats are collected based on WLAST (no dependency on AW info).
+    //   After both channels complete, data is stored to memory.
     // =========================================================================
     task handle_writes();
-        bit [AXI4_ID_WIDTH-1:0]   aw_id;
-        bit [AXI4_ADDR_WIDTH-1:0] aw_addr;
-        bit [7:0]                 aw_len;
-        bit [2:0]                 aw_size;
-        bit [1:0]                 aw_burst;
-
         forever begin
-            // ----- AW handshake -----
-            // Wait for AWVALID from master
-            do @(vif.slave_cb);
-            while (!vif.slave_cb.AWVALID);
+            // AW captured fields
+            bit [AXI4_ID_WIDTH-1:0]   aw_id;
+            bit [AXI4_ADDR_WIDTH-1:0] aw_addr;
+            bit [7:0]                 aw_len;
+            bit [2:0]                 aw_size;
+            bit [1:0]                 aw_burst;
 
-            // Capture address info
-            aw_id    = vif.slave_cb.AWID;
-            aw_addr  = vif.slave_cb.AWADDR;
-            aw_len   = vif.slave_cb.AWLEN;
-            aw_size  = vif.slave_cb.AWSIZE;
-            aw_burst = vif.slave_cb.AWBURST;
+            // W buffered data (collected independently via WLAST)
+            bit [AXI4_DATA_WIDTH-1:0] w_data_q[$];
+            bit [AXI4_STRB_WIDTH-1:0] w_strb_q[$];
 
-            // Assert AWREADY to complete handshake (with optional delay)
-            rand_ready_delay();
-            vif.slave_cb.AWREADY <= 1'b1;
-            @(vif.slave_cb);
-            vif.slave_cb.AWREADY <= 1'b0;
+            w_data_q.delete();
+            w_strb_q.delete();
 
-            `uvm_info(get_type_name(),
-                      $sformatf("AW received: ID=0x%0h ADDR=0x%08h LEN=%0d",
-                                aw_id, aw_addr, aw_len), UVM_HIGH)
+            // Handle AW and W in parallel — supports any ordering
+            fork
+                // ----- AW handshake (address phase) -----
+                begin : aw_phase
+                    do @(vif.slave_cb);
+                    while (!vif.slave_cb.AWVALID);
 
-            // ----- W beats -----
-            for (int beat = 0; beat <= aw_len; beat++) begin
-                bit [AXI4_ADDR_WIDTH-1:0] beat_addr;
-                bit [AXI4_DATA_WIDTH-1:0] wdata;
-                bit [AXI4_STRB_WIDTH-1:0] wstrb;
+                    aw_id    = vif.slave_cb.AWID;
+                    aw_addr  = vif.slave_cb.AWADDR;
+                    aw_len   = vif.slave_cb.AWLEN;
+                    aw_size  = vif.slave_cb.AWSIZE;
+                    aw_burst = vif.slave_cb.AWBURST;
 
-                // Wait for WVALID
-                do @(vif.slave_cb);
-                while (!vif.slave_cb.WVALID);
+                    rand_ready_delay();
+                    vif.slave_cb.AWREADY <= 1'b1;
+                    @(vif.slave_cb);
+                    vif.slave_cb.AWREADY <= 1'b0;
 
-                // Capture data
-                wdata = vif.slave_cb.WDATA;
-                wstrb = vif.slave_cb.WSTRB;
-
-                // Store data to memory (byte-level write with WSTRB)
-                beat_addr = calc_beat_addr(aw_addr, beat, aw_size, aw_burst, aw_len);
-                for (int b = 0; b < AXI4_STRB_WIDTH; b++) begin
-                    if (wstrb[b])
-                        mem[beat_addr + b] = wdata[b*8 +: 8];
+                    `uvm_info(get_type_name(),
+                              $sformatf("AW received: ID=0x%0h ADDR=0x%08h LEN=%0d",
+                                        aw_id, aw_addr, aw_len), UVM_HIGH)
                 end
 
-                // Assert WREADY to complete handshake (with optional delay)
-                rand_ready_delay();
-                vif.slave_cb.WREADY <= 1'b1;
-                @(vif.slave_cb);
-                vif.slave_cb.WREADY <= 1'b0;
+                // ----- W data collection (based on WLAST) -----
+                begin : w_phase
+                    bit wlast_seen = 0;
+                    while (!wlast_seen) begin
+                        do @(vif.slave_cb);
+                        while (!vif.slave_cb.WVALID);
 
-                // Check WLAST at handshake point (WVALID && WREADY both high)
-                if (beat == aw_len && !vif.slave_cb.WLAST)
-                    `uvm_error(get_type_name(),
-                               $sformatf("WLAST not asserted on final beat %0d", beat))
-                if (beat != aw_len && vif.slave_cb.WLAST)
-                    `uvm_error(get_type_name(),
-                               $sformatf("Unexpected WLAST on beat %0d of %0d", beat, aw_len))
+                        w_data_q.push_back(vif.slave_cb.WDATA);
+                        w_strb_q.push_back(vif.slave_cb.WSTRB);
+                        wlast_seen = vif.slave_cb.WLAST;
+
+                        rand_ready_delay();
+                        vif.slave_cb.WREADY <= 1'b1;
+                        @(vif.slave_cb);
+                        vif.slave_cb.WREADY <= 1'b0;
+                    end
+                end
+            join
+
+            // ----- Post-join verification -----
+            // Check that W beat count matches AW burst length
+            if (w_data_q.size() != aw_len + 1)
+                `uvm_error(get_type_name(),
+                           $sformatf("W beat count mismatch: expected %0d, got %0d",
+                                     aw_len + 1, w_data_q.size()))
+
+            // ----- Store buffered data to memory -----
+            for (int beat = 0; beat < w_data_q.size(); beat++) begin
+                bit [AXI4_ADDR_WIDTH-1:0] beat_addr;
+                beat_addr = calc_beat_addr(aw_addr, beat, aw_size, aw_burst, aw_len);
+                for (int b = 0; b < AXI4_STRB_WIDTH; b++) begin
+                    if (w_strb_q[beat][b])
+                        mem[beat_addr + b] = w_data_q[beat][b*8 +: 8];
+                end
             end
 
             // ----- B response (with optional delay) -----
@@ -192,7 +202,6 @@ class axi4_slave_driver extends uvm_driver #(axi4_transaction);
             vif.slave_cb.BRESP  <= AXI4_RESP_OKAY;
             vif.slave_cb.BVALID <= 1'b1;
 
-            // Wait for BREADY handshake
             do @(vif.slave_cb);
             while (!vif.slave_cb.BREADY);
 

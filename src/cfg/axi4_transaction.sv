@@ -17,6 +17,9 @@ class axi4_transaction extends uvm_sequence_item;
     // Direction (VIP-internal)
     rand axi4_dir_e                         dir;
 
+    // Write channel ordering (VIP-internal, only used for AXI4_WRITE)
+    rand axi4_wr_order_e                    wr_order;
+
     // Address channel (shared between AW and AR)
     rand bit [AXI4_ID_WIDTH-1:0]            id;
     rand bit [AXI4_ADDR_WIDTH-1:0]          addr;
@@ -43,7 +46,8 @@ class axi4_transaction extends uvm_sequence_item;
     // UVM utility macro
     // =========================================================================
     `uvm_object_utils_begin(axi4_transaction)
-        `uvm_field_enum(axi4_dir_e,        dir,    UVM_ALL_ON)
+        `uvm_field_enum(axi4_dir_e,        dir,      UVM_ALL_ON)
+        `uvm_field_enum(axi4_wr_order_e,   wr_order, UVM_ALL_ON)
         `uvm_field_int(                    id,     UVM_ALL_ON)
         `uvm_field_int(                    addr,   UVM_ALL_ON)
         `uvm_field_int(                    len,    UVM_ALL_ON)
@@ -142,6 +146,16 @@ class axi4_transaction extends uvm_sequence_item;
         };
     }
 
+    // Default write channel ordering distribution
+    constraint c_wr_order_dist {
+        (dir == AXI4_WRITE) -> wr_order dist {
+            AXI4_WR_PARALLEL    := 50,
+            AXI4_WR_AW_BEFORE_W := 25,
+            AXI4_WR_W_BEFORE_AW := 25
+        };
+        (dir == AXI4_READ) -> wr_order == AXI4_WR_PARALLEL;
+    }
+
     // =========================================================================
     // Constructor
     // =========================================================================
@@ -216,6 +230,8 @@ class axi4_transaction extends uvm_sequence_item;
         s = {s, $sformatf("\n LEN    = %0d (beats = %0d)", len, len + 1)};
         s = {s, $sformatf("\n SIZE   = %s (%0d bytes/beat)", size.name(), 1 << size)};
         s = {s, $sformatf("\n BURST  = %s",     burst.name())};
+        if (dir == AXI4_WRITE)
+            s = {s, $sformatf("\n WR_ORD = %s",     wr_order.name())};
         s = {s, $sformatf("\n LOCK   = %s",     lock.name())};
         s = {s, $sformatf("\n CACHE  = 0b%04b", cache)};
         s = {s, $sformatf("\n PROT   = 0b%03b", prot)};

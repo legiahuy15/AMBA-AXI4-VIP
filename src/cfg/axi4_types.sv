@@ -80,3 +80,16 @@
         AXI4_READ  = 1'b0,
         AXI4_WRITE = 1'b1
     } axi4_dir_e;
+
+    // ---------------------------------------------------------------------------
+    // 7. Write channel ordering (VIP-internal, not in AXI spec)
+    //      Controls the relative timing of AW and W channels.
+    //        PARALLEL   - AW and W start simultaneously (default, most common)
+    //        AW_BEFORE_W - AW handshake completes before W data begins
+    //        W_BEFORE_AW - W data begins before AW address is sent
+    // ---------------------------------------------------------------------------
+    typedef enum bit [1:0] {
+        AXI4_WR_PARALLEL    = 2'b00,
+        AXI4_WR_AW_BEFORE_W = 2'b01,
+        AXI4_WR_W_BEFORE_AW = 2'b10
+    } axi4_wr_order_e;

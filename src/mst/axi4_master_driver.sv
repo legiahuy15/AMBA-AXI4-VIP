@@ -81,15 +81,45 @@ class axi4_master_driver extends uvm_driver #(axi4_transaction);
 
     // =========================================================================
     // Drive transaction — dispatch to write or read flow
+    //   Write channel ordering is controlled by tr.wr_order:
+    //     PARALLEL    — AW and W start simultaneously (default)
+    //     AW_BEFORE_W — AW handshake completes, then W data begins
+    //     W_BEFORE_AW — W data begins first, AW follows after a short delay
     // =========================================================================
     task drive_transaction(axi4_transaction tr);
         case (tr.dir)
             AXI4_WRITE: begin
-                // AXI4 allows AW and W in parallel
-                fork
-                    drive_aw_channel(tr);
-                    drive_w_channel(tr);
-                join
+                case (tr.wr_order)
+                    AXI4_WR_PARALLEL: begin
+                        `uvm_info(get_type_name(), "Write order: AW || W (parallel)", UVM_HIGH)
+                        fork
+                            drive_aw_channel(tr);
+                            drive_w_channel(tr);
+                        join
+                    end
+                    AXI4_WR_AW_BEFORE_W: begin
+                        `uvm_info(get_type_name(), "Write order: AW -> W (sequential)", UVM_HIGH)
+                        drive_aw_channel(tr);
+                        drive_w_channel(tr);
+                    end
+                    AXI4_WR_W_BEFORE_AW: begin
+                        `uvm_info(get_type_name(), "Write order: W -> AW (W first)", UVM_HIGH)
+                        fork
+                            drive_w_channel(tr);
+                            begin
+                                // Delay AW so W channel starts first
+                                repeat ($urandom_range(1, 3)) @(vif.master_cb);
+                                drive_aw_channel(tr);
+                            end
+                        join
+                    end
+                    default: begin
+                        fork
+                            drive_aw_channel(tr);
+                            drive_w_channel(tr);
+                        join
+                    end
+                endcase
                 collect_b_channel(tr);
             end
             AXI4_READ: begin
