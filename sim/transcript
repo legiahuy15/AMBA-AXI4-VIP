@@ -14,7 +14,7 @@
 # //  18 U.S.C. Section 1905.
 # //
 # vsim -gui "+UVM_TESTNAME=axi4_wr_rd_test" "+UVM_VERBOSITY=UVM_LOW" "+DUMP_VCD" -do "		add wave -divider {System}; 		add wave -color Yellow sim:/tb_top/intf/clk; 		add wave -color Yellow sim:/tb_top/intf/rst_n; 		add wave -divider {AW Channel}; 		add wave -hex sim:/tb_top/intf/AWID sim:/tb_top/intf/AWADDR sim:/tb_top/intf/AWLEN; 		add wave -hex sim:/tb_top/intf/AWSIZE sim:/tb_top/intf/AWBURST; 		add wave sim:/tb_top/intf/AWVALID sim:/tb_top/intf/AWREADY; 		add wave -divider {W Channel}; 		add wave -hex sim:/tb_top/intf/WDATA sim:/tb_top/intf/WSTRB; 		add wave sim:/tb_top/intf/WLAST sim:/tb_top/intf/WVALID sim:/tb_top/intf/WREADY; 		add wave -divider {B Channel}; 		add wave -hex sim:/tb_top/intf/BID sim:/tb_top/intf/BRESP; 		add wave sim:/tb_top/intf/BVALID sim:/tb_top/intf/BREADY; 		add wave -divider {AR Channel}; 		add wave -hex sim:/tb_top/intf/ARID sim:/tb_top/intf/ARADDR sim:/tb_top/intf/ARLEN; 		add wave -hex sim:/tb_top/intf/ARSIZE sim:/tb_top/intf/ARBURST; 		add wave sim:/tb_top/intf/ARVALID sim:/tb_top/intf/ARREADY; 		add wave -divider {R Channel}; 		add wave -hex sim:/tb_top/intf/RID sim:/tb_top/intf/RDATA sim:/tb_top/intf/RRESP; 		add wave sim:/tb_top/intf/RLAST sim:/tb_top/intf/RVALID sim:/tb_top/intf/RREADY; 		run -all" opt_tb_top 
-# Start time: 13:55:27 on May 29,2026
+# Start time: 13:49:53 on May 31,2026
 # Loading sv_std.std
 # Loading work.axi4_if(fast)
 # Loading mtiUvm.uvm_pkg
@@ -149,5 +149,5 @@
 #    Time: 3955 ns  Iteration: 55  Instance: /tb_top
 # 1
 # Break in Task uvm_pkg/uvm_root::run_test at /cadtools/mentor/Questa_10.6b/questasim/linux_x86_64/../verilog_src/uvm-1.1d/src/base/uvm_root.svh line 430
-# End time: 14:32:51 on May 29,2026, Elapsed time: 0:37:24
+# End time: 13:55:53 on May 31,2026, Elapsed time: 0:06:00
 # Errors: 0, Warnings: 0
