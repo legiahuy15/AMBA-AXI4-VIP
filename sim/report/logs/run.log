@@ -1,5 +1,5 @@
 # vsim -c -l ./report/logs/run.log -sv_seed 15 "+UVM_TESTNAME=axi4_wr_rd_test" "+UVM_VERBOSITY=UVM_HIGH" "+DUMP_VCD" -do "if {[string equal [design visibility] "port"] || [string equal [design visibility] "none"]} { 	       coverage save -onexit ./report/coverage/axi4_wr_rd_test_seed_15.ucdb; 	     }; run -all; quit -f" opt_tb_top 
-# Start time: 20:19:29 on Jun 03,2026
+# Start time: 20:25:30 on Jun 03,2026
 # //  Questa Sim-64
 # //  Version 10.6b linux_x86_64 May 25 2017
 # //
@@ -104,15 +104,15 @@
 # UVM_INFO ../src/test/axi4_wr_rd_test.sv(37) @ 0: uvm_test_top [axi4_wr_rd_test] Starting 10 write-read-back iterations
 # UVM_INFO ../src/test/axi4_wr_rd_test.sv(52) @ 0: uvm_test_top [axi4_wr_rd_test] [1/10] ADDR=0xb3062f7f LEN=9 BURST=AXI4_BURST_INCR
 # ** Error: [SVA] RVALID asserted during reset
-#    Time: 5 ns Started: 5 ns  Scope: tb_top.u_axi4_sva.RESET_RVALID File: ../src/sva/axi4_sva.sv Line: 172
+#    Time: 5 ns Started: 5 ns  Scope: tb_top.u_axi4_sva.RESET_RVALID File: ../src/sva/axi4_sva.sv Line: 188
 # ** Error: [SVA] ARVALID asserted during reset
-#    Time: 5 ns Started: 5 ns  Scope: tb_top.u_axi4_sva.RESET_ARVALID File: ../src/sva/axi4_sva.sv Line: 169
+#    Time: 5 ns Started: 5 ns  Scope: tb_top.u_axi4_sva.RESET_ARVALID File: ../src/sva/axi4_sva.sv Line: 185
 # ** Error: [SVA] BVALID asserted during reset
-#    Time: 5 ns Started: 5 ns  Scope: tb_top.u_axi4_sva.RESET_BVALID File: ../src/sva/axi4_sva.sv Line: 166
+#    Time: 5 ns Started: 5 ns  Scope: tb_top.u_axi4_sva.RESET_BVALID File: ../src/sva/axi4_sva.sv Line: 182
 # ** Error: [SVA] WVALID asserted during reset
-#    Time: 5 ns Started: 5 ns  Scope: tb_top.u_axi4_sva.RESET_WVALID File: ../src/sva/axi4_sva.sv Line: 163
+#    Time: 5 ns Started: 5 ns  Scope: tb_top.u_axi4_sva.RESET_WVALID File: ../src/sva/axi4_sva.sv Line: 179
 # ** Error: [SVA] AWVALID asserted during reset
-#    Time: 5 ns Started: 5 ns  Scope: tb_top.u_axi4_sva.RESET_AWVALID File: ../src/sva/axi4_sva.sv Line: 160
+#    Time: 5 ns Started: 5 ns  Scope: tb_top.u_axi4_sva.RESET_AWVALID File: ../src/sva/axi4_sva.sv Line: 176
 # UVM_INFO ../src/tb_top.sv(49) @ 95000: reporter [TOP_TB] Reset de-asserted
 # UVM_INFO ../src/slv/axi4_slave_driver.sv(66) @ 95000: uvm_test_top.env.slave_agent.drv [axi4_slave_driver] Reset deasserted - slave driver active
 # UVM_INFO ../src/mst/axi4_master_driver.sv(46) @ 95000: uvm_test_top.env.master_agent.drv [axi4_master_driver] Reset deasserted - master driver active
@@ -120,31 +120,11 @@
 # UVM_INFO ../src/slv/axi4_slave_monitor.sv(71) @ 95000: uvm_test_top.env.slave_agent.mon [axi4_slave_monitor] Reset deasserted — monitor active
 # UVM_INFO ../src/mst/axi4_master_driver.sv(55) @ 95000: uvm_test_top.env.master_agent.drv [axi4_master_driver] Driving AXI4_WRITE  ID=0xa  ADDR=0xb3062f7f  LEN=9
 # UVM_INFO ../src/mst/axi4_master_driver.sv(94) @ 95000: uvm_test_top.env.master_agent.drv [axi4_master_driver] Write order: AW || W (parallel)
-# ** Error: [SVA] WLAST not asserted on final W beat (beat=1, AWLEN=0)
-#    Time: 105 ns Started: 105 ns  Scope: tb_top.u_axi4_sva.WLAST_CORRECT File: ../src/sva/axi4_sva.sv Line: 400
 # UVM_INFO ../src/slv/axi4_slave_driver.sv(159) @ 115000: uvm_test_top.env.slave_agent.drv [axi4_slave_driver] AW received: ID=0xa ADDR=0xb3062f7f LEN=9
 # UVM_INFO ../src/slv/axi4_slave_monitor.sv(116) @ 115000: uvm_test_top.env.slave_agent.mon [axi4_slave_monitor] AW received: ID=0xa ADDR=0xb3062f7f LEN=9
 # UVM_INFO ../src/mst/axi4_master_monitor.sv(124) @ 115000: uvm_test_top.env.master_agent.mon [axi4_master_monitor] AW observed: ID=0xa ADDR=0xb3062f7f LEN=9
-# ** Error: [SVA] W channel payload changed while WVALID && !WREADY
-#    Time: 125 ns Started: 115 ns  Scope: tb_top.u_axi4_sva.W_PAYLOAD_STABLE File: ../src/sva/axi4_sva.sv Line: 276
-# ** Error: [SVA] W channel payload changed while WVALID && !WREADY
-#    Time: 145 ns Started: 135 ns  Scope: tb_top.u_axi4_sva.W_PAYLOAD_STABLE File: ../src/sva/axi4_sva.sv Line: 276
-# ** Error: [SVA] W channel payload changed while WVALID && !WREADY
-#    Time: 165 ns Started: 155 ns  Scope: tb_top.u_axi4_sva.W_PAYLOAD_STABLE File: ../src/sva/axi4_sva.sv Line: 276
-# ** Error: [SVA] W channel payload changed while WVALID && !WREADY
-#    Time: 185 ns Started: 175 ns  Scope: tb_top.u_axi4_sva.W_PAYLOAD_STABLE File: ../src/sva/axi4_sva.sv Line: 276
-# ** Error: [SVA] W channel payload changed while WVALID && !WREADY
-#    Time: 205 ns Started: 195 ns  Scope: tb_top.u_axi4_sva.W_PAYLOAD_STABLE File: ../src/sva/axi4_sva.sv Line: 276
-# ** Error: [SVA] W channel payload changed while WVALID && !WREADY
-#    Time: 225 ns Started: 215 ns  Scope: tb_top.u_axi4_sva.W_PAYLOAD_STABLE File: ../src/sva/axi4_sva.sv Line: 276
-# ** Error: [SVA] W channel payload changed while WVALID && !WREADY
-#    Time: 245 ns Started: 235 ns  Scope: tb_top.u_axi4_sva.W_PAYLOAD_STABLE File: ../src/sva/axi4_sva.sv Line: 276
-# ** Error: [SVA] W channel payload changed while WVALID && !WREADY
-#    Time: 265 ns Started: 255 ns  Scope: tb_top.u_axi4_sva.W_PAYLOAD_STABLE File: ../src/sva/axi4_sva.sv Line: 276
 # UVM_INFO ../src/mst/axi4_master_monitor.sv(184) @ 285000: uvm_test_top.env.master_agent.mon [axi4_master_monitor] W data assembled: ID=0xa ADDR=0xb3062f7f 10 beats
 # UVM_INFO ../src/slv/axi4_slave_monitor.sv(167) @ 285000: uvm_test_top.env.slave_agent.mon [axi4_slave_monitor] W data assembled: ID=0xa ADDR=0xb3062f7f 10 beats
-# ** Error: [SVA] W channel payload changed while WVALID && !WREADY
-#    Time: 285 ns Started: 275 ns  Scope: tb_top.u_axi4_sva.W_PAYLOAD_STABLE File: ../src/sva/axi4_sva.sv Line: 276
 # UVM_INFO ../src/mst/axi4_master_driver.sv(197) @ 315000: uvm_test_top.env.master_agent.drv [axi4_master_driver] Write response: AXI4_RESP_OKAY
 # UVM_INFO ../src/slv/axi4_slave_driver.sv(223) @ 315000: uvm_test_top.env.slave_agent.drv [axi4_slave_driver] Write complete: ID=0xa  10 beats stored
 # UVM_INFO ../src/slv/axi4_slave_monitor.sv(189) @ 315000: uvm_test_top.env.slave_agent.mon [axi4_slave_monitor] Write response sent: ID=0xa ADDR=0xb3062f7f RESP=AXI4_RESP_OKAY
@@ -171,26 +151,8 @@
 # UVM_INFO ../src/slv/axi4_slave_driver.sv(159) @ 575000: uvm_test_top.env.slave_agent.drv [axi4_slave_driver] AW received: ID=0xe ADDR=0x91bec0a0 LEN=9
 # UVM_INFO ../src/slv/axi4_slave_monitor.sv(116) @ 575000: uvm_test_top.env.slave_agent.mon [axi4_slave_monitor] AW received: ID=0xe ADDR=0x91bec0a0 LEN=9
 # UVM_INFO ../src/mst/axi4_master_monitor.sv(124) @ 575000: uvm_test_top.env.master_agent.mon [axi4_master_monitor] AW observed: ID=0xe ADDR=0x91bec0a0 LEN=9
-# ** Error: [SVA] W channel payload changed while WVALID && !WREADY
-#    Time: 615 ns Started: 605 ns  Scope: tb_top.u_axi4_sva.W_PAYLOAD_STABLE File: ../src/sva/axi4_sva.sv Line: 276
-# ** Error: [SVA] W channel payload changed while WVALID && !WREADY
-#    Time: 635 ns Started: 625 ns  Scope: tb_top.u_axi4_sva.W_PAYLOAD_STABLE File: ../src/sva/axi4_sva.sv Line: 276
-# ** Error: [SVA] W channel payload changed while WVALID && !WREADY
-#    Time: 655 ns Started: 645 ns  Scope: tb_top.u_axi4_sva.W_PAYLOAD_STABLE File: ../src/sva/axi4_sva.sv Line: 276
-# ** Error: [SVA] W channel payload changed while WVALID && !WREADY
-#    Time: 675 ns Started: 665 ns  Scope: tb_top.u_axi4_sva.W_PAYLOAD_STABLE File: ../src/sva/axi4_sva.sv Line: 276
-# ** Error: [SVA] W channel payload changed while WVALID && !WREADY
-#    Time: 695 ns Started: 685 ns  Scope: tb_top.u_axi4_sva.W_PAYLOAD_STABLE File: ../src/sva/axi4_sva.sv Line: 276
-# ** Error: [SVA] W channel payload changed while WVALID && !WREADY
-#    Time: 715 ns Started: 705 ns  Scope: tb_top.u_axi4_sva.W_PAYLOAD_STABLE File: ../src/sva/axi4_sva.sv Line: 276
-# ** Error: [SVA] W channel payload changed while WVALID && !WREADY
-#    Time: 735 ns Started: 725 ns  Scope: tb_top.u_axi4_sva.W_PAYLOAD_STABLE File: ../src/sva/axi4_sva.sv Line: 276
-# ** Error: [SVA] W channel payload changed while WVALID && !WREADY
-#    Time: 755 ns Started: 745 ns  Scope: tb_top.u_axi4_sva.W_PAYLOAD_STABLE File: ../src/sva/axi4_sva.sv Line: 276
 # UVM_INFO ../src/slv/axi4_slave_monitor.sv(167) @ 775000: uvm_test_top.env.slave_agent.mon [axi4_slave_monitor] W data assembled: ID=0xe ADDR=0x91bec0a0 10 beats
 # UVM_INFO ../src/mst/axi4_master_monitor.sv(184) @ 775000: uvm_test_top.env.master_agent.mon [axi4_master_monitor] W data assembled: ID=0xe ADDR=0x91bec0a0 10 beats
-# ** Error: [SVA] W channel payload changed while WVALID && !WREADY
-#    Time: 775 ns Started: 765 ns  Scope: tb_top.u_axi4_sva.W_PAYLOAD_STABLE File: ../src/sva/axi4_sva.sv Line: 276
 # UVM_INFO ../src/mst/axi4_master_driver.sv(197) @ 805000: uvm_test_top.env.master_agent.drv [axi4_master_driver] Write response: AXI4_RESP_OKAY
 # UVM_INFO ../src/slv/axi4_slave_driver.sv(223) @ 805000: uvm_test_top.env.slave_agent.drv [axi4_slave_driver] Write complete: ID=0xe  10 beats stored
 # UVM_INFO ../src/mst/axi4_master_monitor.sv(210) @ 805000: uvm_test_top.env.master_agent.mon [axi4_master_monitor] Write complete: ID=0xe ADDR=0x91bec0a0 RESP=AXI4_RESP_OKAY
@@ -214,27 +176,11 @@
 # UVM_INFO ../src/test/axi4_wr_rd_test.sv(52) @ 1035000: uvm_test_top [axi4_wr_rd_test] [3/10] ADDR=0x58abe4d7 LEN=8 BURST=AXI4_BURST_INCR
 # UVM_INFO ../src/mst/axi4_master_driver.sv(55) @ 1035000: uvm_test_top.env.master_agent.drv [axi4_master_driver] Driving AXI4_WRITE  ID=0x0  ADDR=0x58abe4d7  LEN=8
 # UVM_INFO ../src/mst/axi4_master_driver.sv(106) @ 1035000: uvm_test_top.env.master_agent.drv [axi4_master_driver] Write order: W -> AW (W first)
-# ** Error: [SVA] W channel payload changed while WVALID && !WREADY
-#    Time: 1075 ns Started: 1065 ns  Scope: tb_top.u_axi4_sva.W_PAYLOAD_STABLE File: ../src/sva/axi4_sva.sv Line: 276
-# ** Error: [SVA] W channel payload changed while WVALID && !WREADY
-#    Time: 1095 ns Started: 1085 ns  Scope: tb_top.u_axi4_sva.W_PAYLOAD_STABLE File: ../src/sva/axi4_sva.sv Line: 276
 # UVM_INFO ../src/slv/axi4_slave_driver.sv(159) @ 1115000: uvm_test_top.env.slave_agent.drv [axi4_slave_driver] AW received: ID=0x0 ADDR=0x58abe4d7 LEN=8
 # UVM_INFO ../src/slv/axi4_slave_monitor.sv(116) @ 1115000: uvm_test_top.env.slave_agent.mon [axi4_slave_monitor] AW received: ID=0x0 ADDR=0x58abe4d7 LEN=8
 # UVM_INFO ../src/mst/axi4_master_monitor.sv(124) @ 1115000: uvm_test_top.env.master_agent.mon [axi4_master_monitor] AW observed: ID=0x0 ADDR=0x58abe4d7 LEN=8
-# ** Error: [SVA] W channel payload changed while WVALID && !WREADY
-#    Time: 1115 ns Started: 1105 ns  Scope: tb_top.u_axi4_sva.W_PAYLOAD_STABLE File: ../src/sva/axi4_sva.sv Line: 276
-# ** Error: [SVA] W channel payload changed while WVALID && !WREADY
-#    Time: 1135 ns Started: 1125 ns  Scope: tb_top.u_axi4_sva.W_PAYLOAD_STABLE File: ../src/sva/axi4_sva.sv Line: 276
-# ** Error: [SVA] W channel payload changed while WVALID && !WREADY
-#    Time: 1155 ns Started: 1145 ns  Scope: tb_top.u_axi4_sva.W_PAYLOAD_STABLE File: ../src/sva/axi4_sva.sv Line: 276
-# ** Error: [SVA] W channel payload changed while WVALID && !WREADY
-#    Time: 1175 ns Started: 1165 ns  Scope: tb_top.u_axi4_sva.W_PAYLOAD_STABLE File: ../src/sva/axi4_sva.sv Line: 276
-# ** Error: [SVA] W channel payload changed while WVALID && !WREADY
-#    Time: 1195 ns Started: 1185 ns  Scope: tb_top.u_axi4_sva.W_PAYLOAD_STABLE File: ../src/sva/axi4_sva.sv Line: 276
 # UVM_INFO ../src/slv/axi4_slave_monitor.sv(167) @ 1215000: uvm_test_top.env.slave_agent.mon [axi4_slave_monitor] W data assembled: ID=0x0 ADDR=0x58abe4d7 9 beats
 # UVM_INFO ../src/mst/axi4_master_monitor.sv(184) @ 1215000: uvm_test_top.env.master_agent.mon [axi4_master_monitor] W data assembled: ID=0x0 ADDR=0x58abe4d7 9 beats
-# ** Error: [SVA] W channel payload changed while WVALID && !WREADY
-#    Time: 1215 ns Started: 1205 ns  Scope: tb_top.u_axi4_sva.W_PAYLOAD_STABLE File: ../src/sva/axi4_sva.sv Line: 276
 # UVM_INFO ../src/mst/axi4_master_driver.sv(197) @ 1245000: uvm_test_top.env.master_agent.drv [axi4_master_driver] Write response: AXI4_RESP_OKAY
 # UVM_INFO ../src/slv/axi4_slave_driver.sv(223) @ 1245000: uvm_test_top.env.slave_agent.drv [axi4_slave_driver] Write complete: ID=0x0  9 beats stored
 # UVM_INFO ../src/mst/axi4_master_monitor.sv(210) @ 1245000: uvm_test_top.env.master_agent.mon [axi4_master_monitor] Write complete: ID=0x0 ADDR=0x58abe4d7 RESP=AXI4_RESP_OKAY
@@ -258,25 +204,11 @@
 # UVM_INFO ../src/test/axi4_wr_rd_test.sv(52) @ 1455000: uvm_test_top [axi4_wr_rd_test] [4/10] ADDR=0x9eabe3b3 LEN=7 BURST=AXI4_BURST_INCR
 # UVM_INFO ../src/mst/axi4_master_driver.sv(55) @ 1455000: uvm_test_top.env.master_agent.drv [axi4_master_driver] Driving AXI4_WRITE  ID=0xe  ADDR=0x9eabe3b3  LEN=7
 # UVM_INFO ../src/mst/axi4_master_driver.sv(106) @ 1455000: uvm_test_top.env.master_agent.drv [axi4_master_driver] Write order: W -> AW (W first)
-# ** Error: [SVA] W channel payload changed while WVALID && !WREADY
-#    Time: 1495 ns Started: 1485 ns  Scope: tb_top.u_axi4_sva.W_PAYLOAD_STABLE File: ../src/sva/axi4_sva.sv Line: 276
-# ** Error: [SVA] W channel payload changed while WVALID && !WREADY
-#    Time: 1515 ns Started: 1505 ns  Scope: tb_top.u_axi4_sva.W_PAYLOAD_STABLE File: ../src/sva/axi4_sva.sv Line: 276
 # UVM_INFO ../src/slv/axi4_slave_driver.sv(159) @ 1535000: uvm_test_top.env.slave_agent.drv [axi4_slave_driver] AW received: ID=0xe ADDR=0x9eabe3b3 LEN=7
 # UVM_INFO ../src/slv/axi4_slave_monitor.sv(116) @ 1535000: uvm_test_top.env.slave_agent.mon [axi4_slave_monitor] AW received: ID=0xe ADDR=0x9eabe3b3 LEN=7
 # UVM_INFO ../src/mst/axi4_master_monitor.sv(124) @ 1535000: uvm_test_top.env.master_agent.mon [axi4_master_monitor] AW observed: ID=0xe ADDR=0x9eabe3b3 LEN=7
-# ** Error: [SVA] W channel payload changed while WVALID && !WREADY
-#    Time: 1535 ns Started: 1525 ns  Scope: tb_top.u_axi4_sva.W_PAYLOAD_STABLE File: ../src/sva/axi4_sva.sv Line: 276
-# ** Error: [SVA] W channel payload changed while WVALID && !WREADY
-#    Time: 1555 ns Started: 1545 ns  Scope: tb_top.u_axi4_sva.W_PAYLOAD_STABLE File: ../src/sva/axi4_sva.sv Line: 276
-# ** Error: [SVA] W channel payload changed while WVALID && !WREADY
-#    Time: 1575 ns Started: 1565 ns  Scope: tb_top.u_axi4_sva.W_PAYLOAD_STABLE File: ../src/sva/axi4_sva.sv Line: 276
-# ** Error: [SVA] W channel payload changed while WVALID && !WREADY
-#    Time: 1595 ns Started: 1585 ns  Scope: tb_top.u_axi4_sva.W_PAYLOAD_STABLE File: ../src/sva/axi4_sva.sv Line: 276
 # UVM_INFO ../src/slv/axi4_slave_monitor.sv(167) @ 1615000: uvm_test_top.env.slave_agent.mon [axi4_slave_monitor] W data assembled: ID=0xe ADDR=0x9eabe3b3 8 beats
 # UVM_INFO ../src/mst/axi4_master_monitor.sv(184) @ 1615000: uvm_test_top.env.master_agent.mon [axi4_master_monitor] W data assembled: ID=0xe ADDR=0x9eabe3b3 8 beats
-# ** Error: [SVA] W channel payload changed while WVALID && !WREADY
-#    Time: 1615 ns Started: 1605 ns  Scope: tb_top.u_axi4_sva.W_PAYLOAD_STABLE File: ../src/sva/axi4_sva.sv Line: 276
 # UVM_INFO ../src/mst/axi4_master_driver.sv(197) @ 1645000: uvm_test_top.env.master_agent.drv [axi4_master_driver] Write response: AXI4_RESP_OKAY
 # UVM_INFO ../src/slv/axi4_slave_driver.sv(223) @ 1645000: uvm_test_top.env.slave_agent.drv [axi4_slave_driver] Write complete: ID=0xe  8 beats stored
 # UVM_INFO ../src/mst/axi4_master_monitor.sv(210) @ 1645000: uvm_test_top.env.master_agent.mon [axi4_master_monitor] Write complete: ID=0xe ADDR=0x9eabe3b3 RESP=AXI4_RESP_OKAY
@@ -300,27 +232,11 @@
 # UVM_INFO ../src/test/axi4_wr_rd_test.sv(52) @ 1835000: uvm_test_top [axi4_wr_rd_test] [5/10] ADDR=0x31f00677 LEN=8 BURST=AXI4_BURST_INCR
 # UVM_INFO ../src/mst/axi4_master_driver.sv(55) @ 1835000: uvm_test_top.env.master_agent.drv [axi4_master_driver] Driving AXI4_WRITE  ID=0x3  ADDR=0x31f00677  LEN=8
 # UVM_INFO ../src/mst/axi4_master_driver.sv(106) @ 1835000: uvm_test_top.env.master_agent.drv [axi4_master_driver] Write order: W -> AW (W first)
-# ** Error: [SVA] W channel payload changed while WVALID && !WREADY
-#    Time: 1875 ns Started: 1865 ns  Scope: tb_top.u_axi4_sva.W_PAYLOAD_STABLE File: ../src/sva/axi4_sva.sv Line: 276
-# ** Error: [SVA] W channel payload changed while WVALID && !WREADY
-#    Time: 1895 ns Started: 1885 ns  Scope: tb_top.u_axi4_sva.W_PAYLOAD_STABLE File: ../src/sva/axi4_sva.sv Line: 276
 # UVM_INFO ../src/slv/axi4_slave_driver.sv(159) @ 1915000: uvm_test_top.env.slave_agent.drv [axi4_slave_driver] AW received: ID=0x3 ADDR=0x31f00677 LEN=8
 # UVM_INFO ../src/slv/axi4_slave_monitor.sv(116) @ 1915000: uvm_test_top.env.slave_agent.mon [axi4_slave_monitor] AW received: ID=0x3 ADDR=0x31f00677 LEN=8
 # UVM_INFO ../src/mst/axi4_master_monitor.sv(124) @ 1915000: uvm_test_top.env.master_agent.mon [axi4_master_monitor] AW observed: ID=0x3 ADDR=0x31f00677 LEN=8
-# ** Error: [SVA] W channel payload changed while WVALID && !WREADY
-#    Time: 1915 ns Started: 1905 ns  Scope: tb_top.u_axi4_sva.W_PAYLOAD_STABLE File: ../src/sva/axi4_sva.sv Line: 276
-# ** Error: [SVA] W channel payload changed while WVALID && !WREADY
-#    Time: 1935 ns Started: 1925 ns  Scope: tb_top.u_axi4_sva.W_PAYLOAD_STABLE File: ../src/sva/axi4_sva.sv Line: 276
-# ** Error: [SVA] W channel payload changed while WVALID && !WREADY
-#    Time: 1955 ns Started: 1945 ns  Scope: tb_top.u_axi4_sva.W_PAYLOAD_STABLE File: ../src/sva/axi4_sva.sv Line: 276
-# ** Error: [SVA] W channel payload changed while WVALID && !WREADY
-#    Time: 1975 ns Started: 1965 ns  Scope: tb_top.u_axi4_sva.W_PAYLOAD_STABLE File: ../src/sva/axi4_sva.sv Line: 276
-# ** Error: [SVA] W channel payload changed while WVALID && !WREADY
-#    Time: 1995 ns Started: 1985 ns  Scope: tb_top.u_axi4_sva.W_PAYLOAD_STABLE File: ../src/sva/axi4_sva.sv Line: 276
 # UVM_INFO ../src/slv/axi4_slave_monitor.sv(167) @ 2015000: uvm_test_top.env.slave_agent.mon [axi4_slave_monitor] W data assembled: ID=0x3 ADDR=0x31f00677 9 beats
 # UVM_INFO ../src/mst/axi4_master_monitor.sv(184) @ 2015000: uvm_test_top.env.master_agent.mon [axi4_master_monitor] W data assembled: ID=0x3 ADDR=0x31f00677 9 beats
-# ** Error: [SVA] W channel payload changed while WVALID && !WREADY
-#    Time: 2015 ns Started: 2005 ns  Scope: tb_top.u_axi4_sva.W_PAYLOAD_STABLE File: ../src/sva/axi4_sva.sv Line: 276
 # UVM_INFO ../src/mst/axi4_master_driver.sv(197) @ 2045000: uvm_test_top.env.master_agent.drv [axi4_master_driver] Write response: AXI4_RESP_OKAY
 # UVM_INFO ../src/slv/axi4_slave_driver.sv(223) @ 2045000: uvm_test_top.env.slave_agent.drv [axi4_slave_driver] Write complete: ID=0x3  9 beats stored
 # UVM_INFO ../src/mst/axi4_master_monitor.sv(210) @ 2045000: uvm_test_top.env.master_agent.mon [axi4_master_monitor] Write complete: ID=0x3 ADDR=0x31f00677 RESP=AXI4_RESP_OKAY
@@ -344,27 +260,11 @@
 # UVM_INFO ../src/test/axi4_wr_rd_test.sv(52) @ 2255000: uvm_test_top [axi4_wr_rd_test] [6/10] ADDR=0x8471d1ee LEN=8 BURST=AXI4_BURST_INCR
 # UVM_INFO ../src/mst/axi4_master_driver.sv(55) @ 2255000: uvm_test_top.env.master_agent.drv [axi4_master_driver] Driving AXI4_WRITE  ID=0x9  ADDR=0x8471d1ee  LEN=8
 # UVM_INFO ../src/mst/axi4_master_driver.sv(106) @ 2255000: uvm_test_top.env.master_agent.drv [axi4_master_driver] Write order: W -> AW (W first)
-# ** Error: [SVA] W channel payload changed while WVALID && !WREADY
-#    Time: 2295 ns Started: 2285 ns  Scope: tb_top.u_axi4_sva.W_PAYLOAD_STABLE File: ../src/sva/axi4_sva.sv Line: 276
-# ** Error: [SVA] W channel payload changed while WVALID && !WREADY
-#    Time: 2315 ns Started: 2305 ns  Scope: tb_top.u_axi4_sva.W_PAYLOAD_STABLE File: ../src/sva/axi4_sva.sv Line: 276
 # UVM_INFO ../src/slv/axi4_slave_driver.sv(159) @ 2325000: uvm_test_top.env.slave_agent.drv [axi4_slave_driver] AW received: ID=0x9 ADDR=0x8471d1ee LEN=8
 # UVM_INFO ../src/mst/axi4_master_monitor.sv(124) @ 2325000: uvm_test_top.env.master_agent.mon [axi4_master_monitor] AW observed: ID=0x9 ADDR=0x8471d1ee LEN=8
 # UVM_INFO ../src/slv/axi4_slave_monitor.sv(116) @ 2325000: uvm_test_top.env.slave_agent.mon [axi4_slave_monitor] AW received: ID=0x9 ADDR=0x8471d1ee LEN=8
-# ** Error: [SVA] W channel payload changed while WVALID && !WREADY
-#    Time: 2335 ns Started: 2325 ns  Scope: tb_top.u_axi4_sva.W_PAYLOAD_STABLE File: ../src/sva/axi4_sva.sv Line: 276
-# ** Error: [SVA] W channel payload changed while WVALID && !WREADY
-#    Time: 2355 ns Started: 2345 ns  Scope: tb_top.u_axi4_sva.W_PAYLOAD_STABLE File: ../src/sva/axi4_sva.sv Line: 276
-# ** Error: [SVA] W channel payload changed while WVALID && !WREADY
-#    Time: 2375 ns Started: 2365 ns  Scope: tb_top.u_axi4_sva.W_PAYLOAD_STABLE File: ../src/sva/axi4_sva.sv Line: 276
-# ** Error: [SVA] W channel payload changed while WVALID && !WREADY
-#    Time: 2395 ns Started: 2385 ns  Scope: tb_top.u_axi4_sva.W_PAYLOAD_STABLE File: ../src/sva/axi4_sva.sv Line: 276
-# ** Error: [SVA] W channel payload changed while WVALID && !WREADY
-#    Time: 2415 ns Started: 2405 ns  Scope: tb_top.u_axi4_sva.W_PAYLOAD_STABLE File: ../src/sva/axi4_sva.sv Line: 276
 # UVM_INFO ../src/slv/axi4_slave_monitor.sv(167) @ 2435000: uvm_test_top.env.slave_agent.mon [axi4_slave_monitor] W data assembled: ID=0x9 ADDR=0x8471d1ee 9 beats
 # UVM_INFO ../src/mst/axi4_master_monitor.sv(184) @ 2435000: uvm_test_top.env.master_agent.mon [axi4_master_monitor] W data assembled: ID=0x9 ADDR=0x8471d1ee 9 beats
-# ** Error: [SVA] W channel payload changed while WVALID && !WREADY
-#    Time: 2435 ns Started: 2425 ns  Scope: tb_top.u_axi4_sva.W_PAYLOAD_STABLE File: ../src/sva/axi4_sva.sv Line: 276
 # UVM_INFO ../src/mst/axi4_master_driver.sv(197) @ 2465000: uvm_test_top.env.master_agent.drv [axi4_master_driver] Write response: AXI4_RESP_OKAY
 # UVM_INFO ../src/slv/axi4_slave_driver.sv(223) @ 2465000: uvm_test_top.env.slave_agent.drv [axi4_slave_driver] Write complete: ID=0x9  9 beats stored
 # UVM_INFO ../src/mst/axi4_master_monitor.sv(210) @ 2465000: uvm_test_top.env.master_agent.mon [axi4_master_monitor] Write complete: ID=0x9 ADDR=0x8471d1ee RESP=AXI4_RESP_OKAY
@@ -391,16 +291,8 @@
 # UVM_INFO ../src/slv/axi4_slave_driver.sv(159) @ 2705000: uvm_test_top.env.slave_agent.drv [axi4_slave_driver] AW received: ID=0x1 ADDR=0x8d25a4ef LEN=4
 # UVM_INFO ../src/mst/axi4_master_monitor.sv(124) @ 2705000: uvm_test_top.env.master_agent.mon [axi4_master_monitor] AW observed: ID=0x1 ADDR=0x8d25a4ef LEN=4
 # UVM_INFO ../src/slv/axi4_slave_monitor.sv(116) @ 2705000: uvm_test_top.env.slave_agent.mon [axi4_slave_monitor] AW received: ID=0x1 ADDR=0x8d25a4ef LEN=4
-# ** Error: [SVA] W channel payload changed while WVALID && !WREADY
-#    Time: 2715 ns Started: 2705 ns  Scope: tb_top.u_axi4_sva.W_PAYLOAD_STABLE File: ../src/sva/axi4_sva.sv Line: 276
-# ** Error: [SVA] W channel payload changed while WVALID && !WREADY
-#    Time: 2735 ns Started: 2725 ns  Scope: tb_top.u_axi4_sva.W_PAYLOAD_STABLE File: ../src/sva/axi4_sva.sv Line: 276
-# ** Error: [SVA] W channel payload changed while WVALID && !WREADY
-#    Time: 2755 ns Started: 2745 ns  Scope: tb_top.u_axi4_sva.W_PAYLOAD_STABLE File: ../src/sva/axi4_sva.sv Line: 276
 # UVM_INFO ../src/slv/axi4_slave_monitor.sv(167) @ 2775000: uvm_test_top.env.slave_agent.mon [axi4_slave_monitor] W data assembled: ID=0x1 ADDR=0x8d25a4ef 5 beats
 # UVM_INFO ../src/mst/axi4_master_monitor.sv(184) @ 2775000: uvm_test_top.env.master_agent.mon [axi4_master_monitor] W data assembled: ID=0x1 ADDR=0x8d25a4ef 5 beats
-# ** Error: [SVA] W channel payload changed while WVALID && !WREADY
-#    Time: 2775 ns Started: 2765 ns  Scope: tb_top.u_axi4_sva.W_PAYLOAD_STABLE File: ../src/sva/axi4_sva.sv Line: 276
 # UVM_INFO ../src/mst/axi4_master_driver.sv(197) @ 2805000: uvm_test_top.env.master_agent.drv [axi4_master_driver] Write response: AXI4_RESP_OKAY
 # UVM_INFO ../src/slv/axi4_slave_driver.sv(223) @ 2805000: uvm_test_top.env.slave_agent.drv [axi4_slave_driver] Write complete: ID=0x1  5 beats stored
 # UVM_INFO ../src/mst/axi4_master_monitor.sv(210) @ 2805000: uvm_test_top.env.master_agent.mon [axi4_master_monitor] Write complete: ID=0x1 ADDR=0x8d25a4ef RESP=AXI4_RESP_OKAY
@@ -427,34 +319,8 @@
 # UVM_INFO ../src/slv/axi4_slave_driver.sv(159) @ 2965000: uvm_test_top.env.slave_agent.drv [axi4_slave_driver] AW received: ID=0x8 ADDR=0xb181d92c LEN=13
 # UVM_INFO ../src/mst/axi4_master_monitor.sv(124) @ 2965000: uvm_test_top.env.master_agent.mon [axi4_master_monitor] AW observed: ID=0x8 ADDR=0xb181d92c LEN=13
 # UVM_INFO ../src/slv/axi4_slave_monitor.sv(116) @ 2965000: uvm_test_top.env.slave_agent.mon [axi4_slave_monitor] AW received: ID=0x8 ADDR=0xb181d92c LEN=13
-# ** Error: [SVA] W channel payload changed while WVALID && !WREADY
-#    Time: 3005 ns Started: 2995 ns  Scope: tb_top.u_axi4_sva.W_PAYLOAD_STABLE File: ../src/sva/axi4_sva.sv Line: 276
-# ** Error: [SVA] W channel payload changed while WVALID && !WREADY
-#    Time: 3025 ns Started: 3015 ns  Scope: tb_top.u_axi4_sva.W_PAYLOAD_STABLE File: ../src/sva/axi4_sva.sv Line: 276
-# ** Error: [SVA] W channel payload changed while WVALID && !WREADY
-#    Time: 3045 ns Started: 3035 ns  Scope: tb_top.u_axi4_sva.W_PAYLOAD_STABLE File: ../src/sva/axi4_sva.sv Line: 276
-# ** Error: [SVA] W channel payload changed while WVALID && !WREADY
-#    Time: 3065 ns Started: 3055 ns  Scope: tb_top.u_axi4_sva.W_PAYLOAD_STABLE File: ../src/sva/axi4_sva.sv Line: 276
-# ** Error: [SVA] W channel payload changed while WVALID && !WREADY
-#    Time: 3085 ns Started: 3075 ns  Scope: tb_top.u_axi4_sva.W_PAYLOAD_STABLE File: ../src/sva/axi4_sva.sv Line: 276
-# ** Error: [SVA] W channel payload changed while WVALID && !WREADY
-#    Time: 3105 ns Started: 3095 ns  Scope: tb_top.u_axi4_sva.W_PAYLOAD_STABLE File: ../src/sva/axi4_sva.sv Line: 276
-# ** Error: [SVA] W channel payload changed while WVALID && !WREADY
-#    Time: 3125 ns Started: 3115 ns  Scope: tb_top.u_axi4_sva.W_PAYLOAD_STABLE File: ../src/sva/axi4_sva.sv Line: 276
-# ** Error: [SVA] W channel payload changed while WVALID && !WREADY
-#    Time: 3145 ns Started: 3135 ns  Scope: tb_top.u_axi4_sva.W_PAYLOAD_STABLE File: ../src/sva/axi4_sva.sv Line: 276
-# ** Error: [SVA] W channel payload changed while WVALID && !WREADY
-#    Time: 3165 ns Started: 3155 ns  Scope: tb_top.u_axi4_sva.W_PAYLOAD_STABLE File: ../src/sva/axi4_sva.sv Line: 276
-# ** Error: [SVA] W channel payload changed while WVALID && !WREADY
-#    Time: 3185 ns Started: 3175 ns  Scope: tb_top.u_axi4_sva.W_PAYLOAD_STABLE File: ../src/sva/axi4_sva.sv Line: 276
-# ** Error: [SVA] W channel payload changed while WVALID && !WREADY
-#    Time: 3205 ns Started: 3195 ns  Scope: tb_top.u_axi4_sva.W_PAYLOAD_STABLE File: ../src/sva/axi4_sva.sv Line: 276
-# ** Error: [SVA] W channel payload changed while WVALID && !WREADY
-#    Time: 3225 ns Started: 3215 ns  Scope: tb_top.u_axi4_sva.W_PAYLOAD_STABLE File: ../src/sva/axi4_sva.sv Line: 276
 # UVM_INFO ../src/mst/axi4_master_monitor.sv(184) @ 3245000: uvm_test_top.env.master_agent.mon [axi4_master_monitor] W data assembled: ID=0x8 ADDR=0xb181d92c 14 beats
 # UVM_INFO ../src/slv/axi4_slave_monitor.sv(167) @ 3245000: uvm_test_top.env.slave_agent.mon [axi4_slave_monitor] W data assembled: ID=0x8 ADDR=0xb181d92c 14 beats
-# ** Error: [SVA] W channel payload changed while WVALID && !WREADY
-#    Time: 3245 ns Started: 3235 ns  Scope: tb_top.u_axi4_sva.W_PAYLOAD_STABLE File: ../src/sva/axi4_sva.sv Line: 276
 # UVM_INFO ../src/mst/axi4_master_driver.sv(197) @ 3275000: uvm_test_top.env.master_agent.drv [axi4_master_driver] Write response: AXI4_RESP_OKAY
 # UVM_INFO ../src/slv/axi4_slave_driver.sv(223) @ 3275000: uvm_test_top.env.slave_agent.drv [axi4_slave_driver] Write complete: ID=0x8  14 beats stored
 # UVM_INFO ../src/slv/axi4_slave_monitor.sv(189) @ 3275000: uvm_test_top.env.slave_agent.mon [axi4_slave_monitor] Write response sent: ID=0x8 ADDR=0xb181d92c RESP=AXI4_RESP_OKAY
@@ -481,30 +347,8 @@
 # UVM_INFO ../src/slv/axi4_slave_driver.sv(159) @ 3615000: uvm_test_top.env.slave_agent.drv [axi4_slave_driver] AW received: ID=0x1 ADDR=0xdde2eb4d LEN=11
 # UVM_INFO ../src/slv/axi4_slave_monitor.sv(116) @ 3615000: uvm_test_top.env.slave_agent.mon [axi4_slave_monitor] AW received: ID=0x1 ADDR=0xdde2eb4d LEN=11
 # UVM_INFO ../src/mst/axi4_master_monitor.sv(124) @ 3615000: uvm_test_top.env.master_agent.mon [axi4_master_monitor] AW observed: ID=0x1 ADDR=0xdde2eb4d LEN=11
-# ** Error: [SVA] W channel payload changed while WVALID && !WREADY
-#    Time: 3625 ns Started: 3615 ns  Scope: tb_top.u_axi4_sva.W_PAYLOAD_STABLE File: ../src/sva/axi4_sva.sv Line: 276
-# ** Error: [SVA] W channel payload changed while WVALID && !WREADY
-#    Time: 3645 ns Started: 3635 ns  Scope: tb_top.u_axi4_sva.W_PAYLOAD_STABLE File: ../src/sva/axi4_sva.sv Line: 276
-# ** Error: [SVA] W channel payload changed while WVALID && !WREADY
-#    Time: 3665 ns Started: 3655 ns  Scope: tb_top.u_axi4_sva.W_PAYLOAD_STABLE File: ../src/sva/axi4_sva.sv Line: 276
-# ** Error: [SVA] W channel payload changed while WVALID && !WREADY
-#    Time: 3685 ns Started: 3675 ns  Scope: tb_top.u_axi4_sva.W_PAYLOAD_STABLE File: ../src/sva/axi4_sva.sv Line: 276
-# ** Error: [SVA] W channel payload changed while WVALID && !WREADY
-#    Time: 3705 ns Started: 3695 ns  Scope: tb_top.u_axi4_sva.W_PAYLOAD_STABLE File: ../src/sva/axi4_sva.sv Line: 276
-# ** Error: [SVA] W channel payload changed while WVALID && !WREADY
-#    Time: 3725 ns Started: 3715 ns  Scope: tb_top.u_axi4_sva.W_PAYLOAD_STABLE File: ../src/sva/axi4_sva.sv Line: 276
-# ** Error: [SVA] W channel payload changed while WVALID && !WREADY
-#    Time: 3745 ns Started: 3735 ns  Scope: tb_top.u_axi4_sva.W_PAYLOAD_STABLE File: ../src/sva/axi4_sva.sv Line: 276
-# ** Error: [SVA] W channel payload changed while WVALID && !WREADY
-#    Time: 3765 ns Started: 3755 ns  Scope: tb_top.u_axi4_sva.W_PAYLOAD_STABLE File: ../src/sva/axi4_sva.sv Line: 276
-# ** Error: [SVA] W channel payload changed while WVALID && !WREADY
-#    Time: 3785 ns Started: 3775 ns  Scope: tb_top.u_axi4_sva.W_PAYLOAD_STABLE File: ../src/sva/axi4_sva.sv Line: 276
-# ** Error: [SVA] W channel payload changed while WVALID && !WREADY
-#    Time: 3805 ns Started: 3795 ns  Scope: tb_top.u_axi4_sva.W_PAYLOAD_STABLE File: ../src/sva/axi4_sva.sv Line: 276
 # UVM_INFO ../src/mst/axi4_master_monitor.sv(184) @ 3825000: uvm_test_top.env.master_agent.mon [axi4_master_monitor] W data assembled: ID=0x1 ADDR=0xdde2eb4d 12 beats
 # UVM_INFO ../src/slv/axi4_slave_monitor.sv(167) @ 3825000: uvm_test_top.env.slave_agent.mon [axi4_slave_monitor] W data assembled: ID=0x1 ADDR=0xdde2eb4d 12 beats
-# ** Error: [SVA] W channel payload changed while WVALID && !WREADY
-#    Time: 3825 ns Started: 3815 ns  Scope: tb_top.u_axi4_sva.W_PAYLOAD_STABLE File: ../src/sva/axi4_sva.sv Line: 276
 # UVM_INFO ../src/mst/axi4_master_driver.sv(197) @ 3855000: uvm_test_top.env.master_agent.drv [axi4_master_driver] Write response: AXI4_RESP_OKAY
 # UVM_INFO ../src/slv/axi4_slave_driver.sv(223) @ 3855000: uvm_test_top.env.slave_agent.drv [axi4_slave_driver] Write complete: ID=0x1  12 beats stored
 # UVM_INFO ../src/slv/axi4_slave_monitor.sv(189) @ 3855000: uvm_test_top.env.slave_agent.mon [axi4_slave_monitor] Write response sent: ID=0x1 ADDR=0xdde2eb4d RESP=AXI4_RESP_OKAY
@@ -528,33 +372,11 @@
 # UVM_INFO ../src/test/axi4_wr_rd_test.sv(52) @ 4125000: uvm_test_top [axi4_wr_rd_test] [10/10] ADDR=0x4628270a LEN=11 BURST=AXI4_BURST_INCR
 # UVM_INFO ../src/mst/axi4_master_driver.sv(55) @ 4125000: uvm_test_top.env.master_agent.drv [axi4_master_driver] Driving AXI4_WRITE  ID=0x7  ADDR=0x4628270a  LEN=11
 # UVM_INFO ../src/mst/axi4_master_driver.sv(106) @ 4125000: uvm_test_top.env.master_agent.drv [axi4_master_driver] Write order: W -> AW (W first)
-# ** Error: [SVA] W channel payload changed while WVALID && !WREADY
-#    Time: 4165 ns Started: 4155 ns  Scope: tb_top.u_axi4_sva.W_PAYLOAD_STABLE File: ../src/sva/axi4_sva.sv Line: 276
 # UVM_INFO ../src/slv/axi4_slave_driver.sv(159) @ 4175000: uvm_test_top.env.slave_agent.drv [axi4_slave_driver] AW received: ID=0x7 ADDR=0x4628270a LEN=11
 # UVM_INFO ../src/slv/axi4_slave_monitor.sv(116) @ 4175000: uvm_test_top.env.slave_agent.mon [axi4_slave_monitor] AW received: ID=0x7 ADDR=0x4628270a LEN=11
 # UVM_INFO ../src/mst/axi4_master_monitor.sv(124) @ 4175000: uvm_test_top.env.master_agent.mon [axi4_master_monitor] AW observed: ID=0x7 ADDR=0x4628270a LEN=11
-# ** Error: [SVA] W channel payload changed while WVALID && !WREADY
-#    Time: 4185 ns Started: 4175 ns  Scope: tb_top.u_axi4_sva.W_PAYLOAD_STABLE File: ../src/sva/axi4_sva.sv Line: 276
-# ** Error: [SVA] W channel payload changed while WVALID && !WREADY
-#    Time: 4205 ns Started: 4195 ns  Scope: tb_top.u_axi4_sva.W_PAYLOAD_STABLE File: ../src/sva/axi4_sva.sv Line: 276
-# ** Error: [SVA] W channel payload changed while WVALID && !WREADY
-#    Time: 4225 ns Started: 4215 ns  Scope: tb_top.u_axi4_sva.W_PAYLOAD_STABLE File: ../src/sva/axi4_sva.sv Line: 276
-# ** Error: [SVA] W channel payload changed while WVALID && !WREADY
-#    Time: 4245 ns Started: 4235 ns  Scope: tb_top.u_axi4_sva.W_PAYLOAD_STABLE File: ../src/sva/axi4_sva.sv Line: 276
-# ** Error: [SVA] W channel payload changed while WVALID && !WREADY
-#    Time: 4265 ns Started: 4255 ns  Scope: tb_top.u_axi4_sva.W_PAYLOAD_STABLE File: ../src/sva/axi4_sva.sv Line: 276
-# ** Error: [SVA] W channel payload changed while WVALID && !WREADY
-#    Time: 4285 ns Started: 4275 ns  Scope: tb_top.u_axi4_sva.W_PAYLOAD_STABLE File: ../src/sva/axi4_sva.sv Line: 276
-# ** Error: [SVA] W channel payload changed while WVALID && !WREADY
-#    Time: 4305 ns Started: 4295 ns  Scope: tb_top.u_axi4_sva.W_PAYLOAD_STABLE File: ../src/sva/axi4_sva.sv Line: 276
-# ** Error: [SVA] W channel payload changed while WVALID && !WREADY
-#    Time: 4325 ns Started: 4315 ns  Scope: tb_top.u_axi4_sva.W_PAYLOAD_STABLE File: ../src/sva/axi4_sva.sv Line: 276
-# ** Error: [SVA] W channel payload changed while WVALID && !WREADY
-#    Time: 4345 ns Started: 4335 ns  Scope: tb_top.u_axi4_sva.W_PAYLOAD_STABLE File: ../src/sva/axi4_sva.sv Line: 276
 # UVM_INFO ../src/mst/axi4_master_monitor.sv(184) @ 4365000: uvm_test_top.env.master_agent.mon [axi4_master_monitor] W data assembled: ID=0x7 ADDR=0x4628270a 12 beats
 # UVM_INFO ../src/slv/axi4_slave_monitor.sv(167) @ 4365000: uvm_test_top.env.slave_agent.mon [axi4_slave_monitor] W data assembled: ID=0x7 ADDR=0x4628270a 12 beats
-# ** Error: [SVA] W channel payload changed while WVALID && !WREADY
-#    Time: 4365 ns Started: 4355 ns  Scope: tb_top.u_axi4_sva.W_PAYLOAD_STABLE File: ../src/sva/axi4_sva.sv Line: 276
 # UVM_INFO ../src/mst/axi4_master_driver.sv(197) @ 4395000: uvm_test_top.env.master_agent.drv [axi4_master_driver] Write response: AXI4_RESP_OKAY
 # UVM_INFO ../src/slv/axi4_slave_driver.sv(223) @ 4395000: uvm_test_top.env.slave_agent.drv [axi4_slave_driver] Write complete: ID=0x7  12 beats stored
 # UVM_INFO ../src/slv/axi4_slave_monitor.sv(189) @ 4395000: uvm_test_top.env.slave_agent.mon [axi4_slave_monitor] Write response sent: ID=0x7 ADDR=0x4628270a RESP=AXI4_RESP_OKAY
@@ -622,5 +444,5 @@
 # [axi4_write_read_back_seq]    20
 # ** Note: $finish    : /cadtools/mentor/Questa_10.6b/questasim/linux_x86_64/../verilog_src/uvm-1.1d/src/base/uvm_root.svh(430)
 #    Time: 5165 ns  Iteration: 55  Instance: /tb_top
-# End time: 20:20:01 on Jun 03,2026, Elapsed time: 0:00:32
-# Errors: 94, Warnings: 0
+# End time: 20:26:02 on Jun 03,2026, Elapsed time: 0:00:32
+# Errors: 5, Warnings: 0
