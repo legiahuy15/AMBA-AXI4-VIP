@@ -91,10 +91,12 @@ module axi4_sva #(
     int unsigned ar_len_latch;   // Latched ARLEN from last AR handshake
     bit          ar_len_valid;   // Set after first AR handshake
 
-    bit          rst_seen;       // True after rst_n has been asserted at least once
+    bit          rst_seen;       // True after first posedge clk during reset
 
-    // Track reset assertion (to avoid false-positive on initial bit=0 state)
-    always @(posedge clk or negedge rst_n) begin
+    // Track reset assertion — set at posedge clk when rst_n is low.
+    // (Cannot use negedge rst_n because rst_n starts at 0 as a `bit`,
+    //  so there is no falling edge to trigger on.)
+    always @(posedge clk) begin
         if (!rst_n)
             rst_seen <= 1'b1;
     end
