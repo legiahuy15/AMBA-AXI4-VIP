@@ -103,23 +103,23 @@ module axi4_sva #(
 
     // Track AW handshake to latch burst length.
     // Reset aw_len_valid when a W burst completes (WLAST) so that
-    // the next burst is not checked against a stale AWLEN value
-    // (critical for W-before-AW ordering mode).
-    // AW takes priority if AW and WLAST happen simultaneously,
-    // because that AW belongs to the *next* transaction.
+    // the next burst is not checked against a stale AWLEN value.
+    // WLAST takes priority when simultaneous with AW (last NBA wins),
+    // because a same-cycle AW+WLAST means both belong to the same
+    // completing burst (e.g. parallel mode with LEN=0).
     // SVA preponed sampling ensures the assertion still sees
-    // aw_len_valid=1 on the WLAST beat itself.
+    // aw_len_valid=1 on the WLAST beat itself (from the prior cycle).
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             aw_len_latch <= 0;
             aw_len_valid <= 1'b0;
         end else begin
-            if (WVALID && WREADY && WLAST)
-                aw_len_valid <= 1'b0;
             if (AWVALID && AWREADY) begin
                 aw_len_latch <= AWLEN;
                 aw_len_valid <= 1'b1;
             end
+            if (WVALID && WREADY && WLAST)
+                aw_len_valid <= 1'b0;
         end
     end
 
@@ -137,18 +137,18 @@ module axi4_sva #(
 
     // Track AR handshake to latch burst length.
     // Reset ar_len_valid when an R burst completes (RLAST).
-    // AR takes priority if AR and RLAST happen simultaneously.
+    // RLAST takes priority when simultaneous with AR (last NBA wins).
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             ar_len_latch <= 0;
             ar_len_valid <= 1'b0;
         end else begin
-            if (RVALID && RREADY && RLAST)
-                ar_len_valid <= 1'b0;
             if (ARVALID && ARREADY) begin
                 ar_len_latch <= ARLEN;
                 ar_len_valid <= 1'b1;
             end
+            if (RVALID && RREADY && RLAST)
+                ar_len_valid <= 1'b0;
         end
     end
 

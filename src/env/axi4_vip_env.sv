@@ -56,18 +56,18 @@ class axi4_vip_env extends uvm_env;
     function void build_phase(uvm_phase phase);
         super.build_phase(phase);
 
-        // ---- Environment config ----
+        // Environment config
         if (!uvm_config_db#(axi4_vip_env_config)::get(this, "", "cfg", cfg)) begin
             `uvm_info(get_type_name(),
                       "No env config found in config_db - using defaults", UVM_MEDIUM)
             cfg = axi4_vip_env_config::type_id::create("cfg");
         end
 
-        // ---- Propagate agent configs ----
+        // Propagate agent configs
         uvm_config_db#(axi4_agent_config)::set(this, "master_agent", "cfg", cfg.master_agent_cfg);
         uvm_config_db#(axi4_agent_config)::set(this, "slave_agent", "cfg", cfg.slave_agent_cfg);
 
-        // ---- Propagate virtual interfaces ----
+        // Propagate virtual interfaces
         //   Master side (required)
         if (cfg.master_vif == null)
             `uvm_fatal(get_type_name(), "master_vif is null - set it in axi4_vip_env_config before build")
@@ -83,17 +83,17 @@ class axi4_vip_env extends uvm_env;
             `uvm_info(get_type_name(), "slave_vif not set - reusing master_vif (passthrough mode)", UVM_MEDIUM)
         end
 
-        // ---- Create agents (always) ----
+        // Create agents (always)
         master_agent = axi4_master_agent::type_id::create("master_agent", this);
         slave_agent  = axi4_slave_agent::type_id::create("slave_agent", this);
 
-        // ---- Create scoreboard (optional) ----
+        // Create scoreboard (optional)
         if (cfg.has_scoreboard) begin
             scb = axi4_scoreboard::type_id::create("scb", this);
             `uvm_info(get_type_name(), "Scoreboard created", UVM_MEDIUM)
         end
 
-        // ---- Create coverage collectors (optional) ----
+        // Create coverage collectors (optional)
         if (cfg.has_coverage) begin
             master_cov = axi4_coverage::type_id::create("master_cov", this);
             slave_cov  = axi4_coverage::type_id::create("slave_cov", this);
@@ -108,22 +108,20 @@ class axi4_vip_env extends uvm_env;
     function void connect_phase(uvm_phase phase);
         super.connect_phase(phase);
 
-        // ---- Scoreboard connections ----
+        // Scoreboard connections
         if (cfg.has_scoreboard) begin
             master_agent.mon.ap.connect(scb.master_export);
             slave_agent.mon.ap.connect(scb.slave_export);
             `uvm_info(get_type_name(),
-                      "Scoreboard connected: master_mon.ap -> scb, slave_mon.ap -> scb",
-                      UVM_HIGH)
+                      "Scoreboard connected: master_mon.ap -> scb, slave_mon.ap -> scb", UVM_HIGH)
         end
 
-        // ---- Coverage connections ----
+        // Coverage connections
         if (cfg.has_coverage) begin
             master_agent.mon.ap.connect(master_cov.analysis_export);
             slave_agent.mon.ap.connect(slave_cov.analysis_export);
             `uvm_info(get_type_name(),
-                      "Coverage connected: master_mon.ap -> master_cov, slave_mon.ap -> slave_cov",
-                      UVM_HIGH)
+                      "Coverage connected: master_mon.ap -> master_cov, slave_mon.ap -> slave_cov", UVM_HIGH)
         end
     endfunction : connect_phase
 
