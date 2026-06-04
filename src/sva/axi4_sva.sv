@@ -109,7 +109,8 @@ module axi4_sva #(
             // 1. Capture AWLEN when AW handshakes
             if (AWVALID && AWREADY) begin
                 if (w_len_fifo.size() > 0) begin
-                    int unsigned actual_w_len = w_len_fifo.pop_front();
+                    int unsigned actual_w_len;
+                    actual_w_len = w_len_fifo.pop_front();
                     WLAST_CORRECT_W_BEFORE_AW : assert (AWLEN == actual_w_len)
                         else $error("[SVA] WLAST asserted on beat %0d but AWLEN is %0d (W before AW)", 
                                     actual_w_len, AWLEN);
