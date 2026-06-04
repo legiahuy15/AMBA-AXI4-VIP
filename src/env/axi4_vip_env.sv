@@ -9,14 +9,14 @@
 //                 - Scoreboard    (master ↔ slave transaction comparison)
 //                 - Coverage      (one collector per agent)
 //
-//               Scoreboard and coverage are optional — controlled via
+//               Scoreboard and coverage are optional - controlled via
 //               axi4_vip_env_config::has_scoreboard / has_coverage.
 //
 //               Connection topology:
-//                 master_agent.mon.ap ──▶ scb.master_export
-//                 slave_agent.mon.ap  ──▶ scb.slave_export
-//                 master_agent.mon.ap ──▶ master_cov.analysis_export
-//                 slave_agent.mon.ap  ──▶ slave_cov.analysis_export
+//                 master_agent.mon.ap -> scb.master_export
+//                 slave_agent.mon.ap  -> scb.slave_export
+//                 master_agent.mon.ap -> master_cov.analysis_export
+//                 slave_agent.mon.ap  -> slave_cov.analysis_export
 //
 //               This file is `included inside axi4_pkg.sv.
 //==============================================================================
@@ -59,7 +59,7 @@ class axi4_vip_env extends uvm_env;
         // ---- Environment config ----
         if (!uvm_config_db#(axi4_vip_env_config)::get(this, "", "cfg", cfg)) begin
             `uvm_info(get_type_name(),
-                      "No env config found in config_db — using defaults", UVM_MEDIUM)
+                      "No env config found in config_db - using defaults", UVM_MEDIUM)
             cfg = axi4_vip_env_config::type_id::create("cfg");
         end
 
@@ -70,7 +70,7 @@ class axi4_vip_env extends uvm_env;
         // ---- Propagate virtual interfaces ----
         //   Master side (required)
         if (cfg.master_vif == null)
-            `uvm_fatal(get_type_name(), "master_vif is null — set it in axi4_vip_env_config before build")
+            `uvm_fatal(get_type_name(), "master_vif is null - set it in axi4_vip_env_config before build")
 
         uvm_config_db#(virtual axi4_if)::set(this, "master_agent", "vif", cfg.master_vif);
 
@@ -80,7 +80,7 @@ class axi4_vip_env extends uvm_env;
             uvm_config_db#(virtual axi4_if)::set(this, "slave_agent", "vif", cfg.slave_vif);
         end else begin
             uvm_config_db#(virtual axi4_if)::set(this, "slave_agent", "vif", cfg.master_vif);
-            `uvm_info(get_type_name(), "slave_vif not set — reusing master_vif (passthrough mode)", UVM_MEDIUM)
+            `uvm_info(get_type_name(), "slave_vif not set - reusing master_vif (passthrough mode)", UVM_MEDIUM)
         end
 
         // ---- Create agents (always) ----

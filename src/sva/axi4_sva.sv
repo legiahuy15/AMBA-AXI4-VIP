@@ -149,7 +149,7 @@ module axi4_sva #(
 
     // =========================================================================
     //  1. RESET CHECKS
-    //     All VALID signals must be de-asserted during reset (AXI4 spec A3.1.2)
+    //     All VALID signals must be de-asserted during reset (AXI4 spec)
     //     Only checked after reset has been asserted at least once (rst_seen)
     //     to avoid false positives from initial bit=0 state.
     // =========================================================================
@@ -190,9 +190,8 @@ module axi4_sva #(
         else $error("[SVA] RVALID asserted during reset");
 
     // =========================================================================
-    //  2. HANDSHAKE STABILITY — VALID must remain asserted until READY
-    //     (AXI4 spec A3.2.1: "Once VALID is asserted it must remain asserted
-    //      until the handshake occurs")
+    //  2. HANDSHAKE STABILITY
+    //     VALID must remain asserted until READY (AXI4 spec)
     // =========================================================================
 
     // --- AW Channel ---
@@ -242,8 +241,8 @@ module axi4_sva #(
 
     // =========================================================================
     //  3. PAYLOAD STABILITY — signals must be stable while VALID && !READY
-    //     (AXI4 spec A3.2.2: "The source must not change the information it
-    //      is signaling while VALID is asserted")
+    //     The source must not change the information it is signaling
+    //     while VALID is asserted (AXI4 spec)
     // =========================================================================
 
     // --- AW Channel payload ---

@@ -63,7 +63,7 @@ module tb_top;
 
     // =========================================================================
     // SVA — AXI4 protocol assertion checker
-    //   Direct instantiation (QuestaSim 10.6b does not support bind-to-interface).
+    //   Direct instantiation (Old versions of QuestaSim does not support bind-to-interface).
     //   All signals are connected via the interface instance `intf`.
     // =========================================================================
     axi4_sva #(
