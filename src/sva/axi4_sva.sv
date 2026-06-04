@@ -84,12 +84,11 @@ module axi4_sva #(
     //  Internal state tracking
     // =========================================================================
     int unsigned w_beat_cnt;     // Counts W beats within a burst
-    int unsigned aw_len_latch;   // Latched AWLEN from last AW handshake
-    bit          aw_len_valid;   // Set after first AW handshake (for W_BEFORE_AW)
+    int unsigned aw_len_fifo[$]; // FIFO storing AWLEN values from AW handshakes
+    int unsigned w_len_fifo[$];  // FIFO storing actual W burst lengths (completed before AW)
 
     int unsigned r_beat_cnt;     // Counts R beats within a burst
-    int unsigned ar_len_latch;   // Latched ARLEN from last AR handshake
-    bit          ar_len_valid;   // Set after first AR handshake
+    int unsigned ar_len_fifo[$]; // FIFO storing ARLEN values from AR handshakes
 
     bit          rst_seen;       // True after first posedge clk during reset
 
@@ -101,25 +100,23 @@ module axi4_sva #(
             rst_seen <= 1'b1;
     end
 
-    // Track AW handshake to latch burst length.
-    // Reset aw_len_valid when a W burst completes (WLAST) so that
-    // the next burst is not checked against a stale AWLEN value.
-    // WLAST takes priority when simultaneous with AW (last NBA wins),
-    // because a same-cycle AW+WLAST means both belong to the same
-    // completing burst (e.g. parallel mode with LEN=0).
-    // SVA preponed sampling ensures the assertion still sees
-    // aw_len_valid=1 on the WLAST beat itself (from the prior cycle).
+    // Track AW handshakes and W burst completions
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
-            aw_len_latch <= 0;
-            aw_len_valid <= 1'b0;
+            aw_len_fifo.delete();
+            w_len_fifo.delete();
         end else begin
+            // 1. Capture AWLEN when AW handshakes
             if (AWVALID && AWREADY) begin
-                aw_len_latch <= AWLEN;
-                aw_len_valid <= 1'b1;
+                if (w_len_fifo.size() > 0) begin
+                    int unsigned actual_w_len = w_len_fifo.pop_front();
+                    WLAST_CORRECT_W_BEFORE_AW : assert (AWLEN == actual_w_len)
+                        else $error("[SVA] WLAST asserted on beat %0d but AWLEN is %0d (W before AW)", 
+                                    actual_w_len, AWLEN);
+                end else begin
+                    aw_len_fifo.push_back(AWLEN);
+                end
             end
-            if (WVALID && WREADY && WLAST)
-                aw_len_valid <= 1'b0;
         end
     end
 
@@ -135,20 +132,68 @@ module axi4_sva #(
         end
     end
 
-    // Track AR handshake to latch burst length.
-    // Reset ar_len_valid when an R burst completes (RLAST).
-    // RLAST takes priority when simultaneous with AR (last NBA wins).
+    // Track W handshake checks
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
-            ar_len_latch <= 0;
-            ar_len_valid <= 1'b0;
+            // reset logic
         end else begin
-            if (ARVALID && ARREADY) begin
-                ar_len_latch <= ARLEN;
-                ar_len_valid <= 1'b1;
+            if (WVALID && WREADY) begin
+                if (aw_len_fifo.size() > 0) begin
+                    if (w_beat_cnt == aw_len_fifo[0]) begin
+                        WLAST_CORRECT_CHECK : assert (WLAST)
+                            else $error("[SVA] WLAST not asserted on final W beat (beat=%0d, expected AWLEN=%0d)",
+                                        w_beat_cnt, aw_len_fifo[0]);
+                    end else begin
+                        WLAST_NOT_EARLY_CHECK : assert (!WLAST)
+                            else $error("[SVA] WLAST asserted too early (beat=%0d, expected AWLEN=%0d)",
+                                        w_beat_cnt, aw_len_fifo[0]);
+                    end
+                end
+
+                if (WLAST) begin
+                    if (aw_len_fifo.size() > 0) begin
+                        void'(aw_len_fifo.pop_front());
+                    end else begin
+                        w_len_fifo.push_back(w_beat_cnt);
+                    end
+                end
             end
-            if (RVALID && RREADY && RLAST)
-                ar_len_valid <= 1'b0;
+        end
+    end
+
+    // Track AR handshakes and check RLAST on R burst completion
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            ar_len_fifo.delete();
+        end else begin
+            // 1. Capture ARLEN when AR handshakes
+            if (ARVALID && ARREADY) begin
+                ar_len_fifo.push_back(ARLEN);
+            end
+
+            // 2. R handshake checks
+            if (RVALID && RREADY) begin
+                if (ar_len_fifo.size() > 0) begin
+                    if (r_beat_cnt == ar_len_fifo[0]) begin
+                        RLAST_CORRECT_CHECK : assert (RLAST)
+                            else $error("[SVA] RLAST not asserted on final R beat (beat=%0d, expected ARLEN=%0d)",
+                                        r_beat_cnt, ar_len_fifo[0]);
+                    end else begin
+                        RLAST_NOT_EARLY_CHECK : assert (!RLAST)
+                            else $error("[SVA] RLAST asserted too early (beat=%0d, expected ARLEN=%0d)",
+                                        r_beat_cnt, ar_len_fifo[0]);
+                    end
+                end else begin
+                    RLAST_WITHOUT_AR : assert (1'b0)
+                        else $error("[SVA] R handshake occurred without outstanding AR handshake");
+                end
+
+                if (RLAST) begin
+                    if (ar_len_fifo.size() > 0) begin
+                        void'(ar_len_fifo.pop_front());
+                    end
+                end
+            end
         end
     end
 
@@ -408,49 +453,9 @@ module axi4_sva #(
 
     // =========================================================================
     //  5. BURST PROTOCOL — WLAST / RLAST correctness
-    //     Only checked when aw_len_valid/ar_len_valid is set, to avoid
-    //     false positives in W_BEFORE_AW mode where W arrives before AW.
+    //     (Checks moved to always blocks at the top using queue-based tracking
+    //      to correctly support out-of-order handshakes and pipeline mode)
     // =========================================================================
-
-    // WLAST must be asserted when the W beat counter matches AWLEN
-    property p_wlast_correct;
-        @(posedge clk) disable iff (!rst_n)
-        (WVALID && WREADY && aw_len_valid && (w_beat_cnt == aw_len_latch)) |-> WLAST;
-    endproperty
-
-    // WLAST must NOT be asserted before the final beat
-    property p_wlast_not_early;
-        @(posedge clk) disable iff (!rst_n)
-        (WVALID && WREADY && WLAST && aw_len_valid) |-> (w_beat_cnt == aw_len_latch);
-    endproperty
-
-    // RLAST must be asserted when the R beat counter matches ARLEN
-    property p_rlast_correct;
-        @(posedge clk) disable iff (!rst_n)
-        (RVALID && RREADY && ar_len_valid && (r_beat_cnt == ar_len_latch)) |-> RLAST;
-    endproperty
-
-    // RLAST must NOT be asserted before the final beat
-    property p_rlast_not_early;
-        @(posedge clk) disable iff (!rst_n)
-        (RVALID && RREADY && RLAST && ar_len_valid) |-> (r_beat_cnt == ar_len_latch);
-    endproperty
-
-    WLAST_CORRECT   : assert property (p_wlast_correct)
-        else $error("[SVA] WLAST not asserted on final W beat (beat=%0d, AWLEN=%0d)",
-                    w_beat_cnt, aw_len_latch);
-
-    WLAST_NOT_EARLY : assert property (p_wlast_not_early)
-        else $error("[SVA] WLAST asserted too early (beat=%0d, AWLEN=%0d)",
-                    w_beat_cnt, aw_len_latch);
-
-    RLAST_CORRECT   : assert property (p_rlast_correct)
-        else $error("[SVA] RLAST not asserted on final R beat (beat=%0d, ARLEN=%0d)",
-                    r_beat_cnt, ar_len_latch);
-
-    RLAST_NOT_EARLY : assert property (p_rlast_not_early)
-        else $error("[SVA] RLAST asserted too early (beat=%0d, ARLEN=%0d)",
-                    r_beat_cnt, ar_len_latch);
 
     // =========================================================================
     //  6. BURST TYPE — AWBURST / ARBURST must not be reserved value (2'b11)
