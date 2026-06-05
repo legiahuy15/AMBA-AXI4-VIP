@@ -40,7 +40,9 @@ USE_COVERAGE  ?= 1
 PLUSARGS      += +DUMP_VCD
 
 # List of tests to run during a regression
-TEST_LIST     ?= axi4_wr_rd_test axi4_random_test axi4_outstanding_test
+TEST_LIST     ?= axi4_wr_rd_test axi4_random_test axi4_outstanding_test \
+                 axi4_exclusive_test axi4_unaligned_test axi4_cache_prot_test \
+                 axi4_strobe_test axi4_burst_sweep_test
 
 # ==============================================================================
 # 3. Simulator Flags & Conditional Options

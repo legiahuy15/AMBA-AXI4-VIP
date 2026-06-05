@@ -56,6 +56,8 @@ class axi4_coverage extends uvm_subscriber #(axi4_transaction);
             bins b32  = {AXI4_SIZE_32B};
             bins b64  = {AXI4_SIZE_64B};
             bins b128 = {AXI4_SIZE_128B};
+            // Ignore sizes that exceed the configured data bus width
+            ignore_bins illegal_sizes = {AXI4_SIZE_8B, AXI4_SIZE_16B, AXI4_SIZE_32B, AXI4_SIZE_64B, AXI4_SIZE_128B} with ((1 << item) > (AXI4_DATA_WIDTH / 8));
         }
 
         cp_len: coverpoint m_len {
@@ -92,7 +94,13 @@ class axi4_coverage extends uvm_subscriber #(axi4_transaction);
         cx_dir_size:   cross cp_dir, cp_size;
         cx_dir_len:    cross cp_dir, cp_len;
         cx_dir_lock:   cross cp_dir, cp_lock;
-        cx_burst_len:  cross cp_burst, cp_len;
+        cx_burst_len:  cross cp_burst, cp_len {
+            // FIXED burst length must be <= 16 (m_len <= 15)
+            ignore_bins fixed_too_long = binsof(cp_burst.fixed) && binsof(cp_len.long_b, cp_len.very_long, cp_len.max_b);
+            // WRAP burst length must be 2, 4, 8, or 16 (m_len = 1, 3, 7, 15)
+            // So it cannot be single (m_len 0), long_b, very_long, or max_b
+            ignore_bins wrap_illegal_lens = binsof(cp_burst.wrap) && binsof(cp_len.single, cp_len.long_b, cp_len.very_long, cp_len.max_b);
+        }
         cx_burst_size: cross cp_burst, cp_size;
     endgroup
 
@@ -121,8 +129,10 @@ class axi4_coverage extends uvm_subscriber #(axi4_transaction);
             bins wrap  = {AXI4_BURST_WRAP};
         }
 
-        // Unaligned INCR is common; WRAP must be aligned (constrained)
-        cx_aligned_burst: cross cp_aligned, cp_burst;
+        // Unaligned INCR/FIXED is common; WRAP must be aligned (constrained by AXI spec)
+        cx_aligned_burst: cross cp_aligned, cp_burst {
+            ignore_bins unaligned_wrap = binsof(cp_aligned.unaligned) && binsof(cp_burst.wrap);
+        }
     endgroup
 
     // =========================================================================

@@ -22,6 +22,11 @@ package axi4_test_pkg;
     `include "test/axi4_wr_rd_test.sv"
     `include "test/axi4_random_test.sv"
     `include "test/axi4_outstanding_test.sv"
+    `include "test/axi4_exclusive_test.sv"
+    `include "test/axi4_unaligned_test.sv"
+    `include "test/axi4_cache_prot_test.sv"
+    `include "test/axi4_strobe_test.sv"
+    `include "test/axi4_burst_sweep_test.sv"
 
 endpackage : axi4_test_pkg
 

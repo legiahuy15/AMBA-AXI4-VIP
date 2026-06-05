@@ -54,6 +54,11 @@ package axi4_pkg;
     `include "seq/axi4_write_read_back_seq.sv"
     `include "seq/axi4_random_seq.sv"
     `include "seq/axi4_outstanding_seq.sv"
+    `include "seq/axi4_exclusive_seq.sv"
+    `include "seq/axi4_unaligned_seq.sv"
+    `include "seq/axi4_cache_prot_seq.sv"
+    `include "seq/axi4_strobe_pattern_seq.sv"
+    `include "seq/axi4_burst_sweep_seq.sv"
 
     // =========================================================================
     // Environment-level Components  (src/env/)
