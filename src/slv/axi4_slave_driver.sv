@@ -236,10 +236,12 @@ class axi4_slave_driver extends uvm_driver #(axi4_transaction);
                 if (do_write) begin
                     for (int beat = 0; beat < w_data_q.size(); beat++) begin
                         bit [AXI4_ADDR_WIDTH-1:0] beat_addr;
+                        bit [AXI4_ADDR_WIDTH-1:0] aligned_beat_addr;
                         beat_addr = calc_beat_addr(aw_addr, beat, aw_size, aw_burst, aw_len);
+                        aligned_beat_addr = (beat_addr / AXI4_STRB_WIDTH) * AXI4_STRB_WIDTH;
                         for (int b = 0; b < AXI4_STRB_WIDTH; b++) begin
                             if (w_strb_q[beat][b])
-                                mem[beat_addr + b] = w_data_q[beat][b*8 +: 8];
+                                mem[aligned_beat_addr + b] = w_data_q[beat][b*8 +: 8];
                         end
                     end
                 end
@@ -318,13 +320,18 @@ class axi4_slave_driver extends uvm_driver #(axi4_transaction);
                 for (int beat = 0; beat <= ar_len; beat++) begin
                     bit [AXI4_ADDR_WIDTH-1:0] beat_addr;
                     bit [AXI4_DATA_WIDTH-1:0] rdata;
+                    int unsigned num_bytes = 1 << ar_size;
 
-                    // Read data from memory (byte-by-byte)
+                    // Read data from memory (byte-by-byte) and place in correct byte lanes
                     beat_addr = calc_beat_addr(ar_addr, beat, ar_size, ar_burst, ar_len);
                     rdata = '0;
-                    for (int b = 0; b < (1 << ar_size); b++) begin
-                        if (mem.exists(beat_addr + b))
-                            rdata[b*8 +: 8] = mem[beat_addr + b];
+                    for (int offset = 0; offset < num_bytes; offset++) begin
+                        bit [AXI4_ADDR_WIDTH-1:0] byte_addr;
+                        int unsigned lane;
+                        byte_addr = beat_addr + offset;
+                        lane = byte_addr % AXI4_STRB_WIDTH;
+                        if (mem.exists(byte_addr))
+                            rdata[lane*8 +: 8] = mem[byte_addr];
                     end
 
                     // Drive R channel (with optional response delay)
