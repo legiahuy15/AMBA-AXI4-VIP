@@ -48,16 +48,9 @@ class axi4_coverage extends uvm_subscriber #(axi4_transaction);
         }
 
         cp_size: coverpoint m_size {
-            bins b1   = {AXI4_SIZE_1B};
-            bins b2   = {AXI4_SIZE_2B};
-            bins b4   = {AXI4_SIZE_4B};
-            bins b8   = {AXI4_SIZE_8B};
-            bins b16  = {AXI4_SIZE_16B};
-            bins b32  = {AXI4_SIZE_32B};
-            bins b64  = {AXI4_SIZE_64B};
-            bins b128 = {AXI4_SIZE_128B};
-            // Ignore sizes that exceed the configured data bus width
-            ignore_bins illegal_sizes = {AXI4_SIZE_8B, AXI4_SIZE_16B, AXI4_SIZE_32B, AXI4_SIZE_64B, AXI4_SIZE_128B} with ((1 << item) > (AXI4_DATA_WIDTH / 8));
+            bins sizes[] = {AXI4_SIZE_1B, AXI4_SIZE_2B, AXI4_SIZE_4B, 
+                            AXI4_SIZE_8B, AXI4_SIZE_16B, AXI4_SIZE_32B, 
+                            AXI4_SIZE_64B, AXI4_SIZE_128B} with ((1 << item) <= (AXI4_DATA_WIDTH / 8));
         }
 
         cp_len: coverpoint m_len {
