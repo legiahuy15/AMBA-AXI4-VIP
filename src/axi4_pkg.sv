@@ -53,6 +53,7 @@ package axi4_pkg;
     `include "seq/axi4_single_read_seq.sv"
     `include "seq/axi4_write_read_back_seq.sv"
     `include "seq/axi4_random_seq.sv"
+    `include "seq/axi4_outstanding_seq.sv"
 
     // =========================================================================
     // Environment-level Components  (src/env/)
