@@ -27,6 +27,40 @@ class axi4_slave_driver extends uvm_driver #(axi4_transaction);
     protected bit [AXI4_ADDR_WIDTH-1:0] excl_table [bit [AXI4_ID_WIDTH-1:0]];
     protected bit                       excl_valid [bit [AXI4_ID_WIDTH-1:0]];
 
+    // Internal FIFO structs and queues to support outstanding transactions
+    typedef struct {
+        bit [AXI4_ID_WIDTH-1:0]   id;
+        bit [AXI4_ADDR_WIDTH-1:0] addr;
+        bit [7:0]                 len;
+        bit [2:0]                 size;
+        bit [1:0]                 burst;
+        axi4_lock_e               lock;
+    } aw_info_t;
+
+    typedef struct {
+        bit [AXI4_DATA_WIDTH-1:0] data_q[$];
+        bit [AXI4_STRB_WIDTH-1:0] strb_q[$];
+    } w_burst_t;
+
+    typedef struct {
+        bit [AXI4_ID_WIDTH-1:0] id;
+        axi4_resp_e             resp;
+    } b_resp_t;
+
+    typedef struct {
+        bit [AXI4_ID_WIDTH-1:0]   id;
+        bit [AXI4_ADDR_WIDTH-1:0] addr;
+        bit [7:0]                 len;
+        bit [2:0]                 size;
+        bit [1:0]                 burst;
+        axi4_lock_e               lock;
+    } ar_info_t;
+
+    protected aw_info_t aw_fifo[$];
+    protected w_burst_t w_fifo[$];
+    protected b_resp_t  b_fifo[$];
+    protected ar_info_t ar_fifo[$];
+
     // =========================================================================
     // Configurable delays — set via config_db or directly for back-pressure
     //   ready_delay : cycles before asserting xREADY (simulates slow slave)
@@ -96,6 +130,11 @@ class axi4_slave_driver extends uvm_driver #(axi4_transaction);
         vif.slave_cb.ARREADY <= 1'b0;
         vif.slave_cb.RVALID  <= 1'b0;
         vif.slave_cb.RLAST   <= 1'b0;
+
+        aw_fifo.delete();
+        w_fifo.delete();
+        b_fifo.delete();
+        ar_fifo.delete();
     endtask : reset_signals
 
     // =========================================================================
@@ -118,180 +157,175 @@ class axi4_slave_driver extends uvm_driver #(axi4_transaction);
     endtask : rand_resp_delay
 
     // =========================================================================
-    // Handle Writes — forever loop processing write requests
-    //   AW and W channels are handled in parallel (fork/join) to support
-    //   all valid AXI4 orderings: AW||W, AW->W, and W->AW.
-    //   W beats are collected based on WLAST (no dependency on AW info).
-    //   After both channels complete, data is stored to memory.
+    // Handle Writes — forks collector tasks and executor tasks to handle
+    // pipelined/outstanding write requests.
     // =========================================================================
     task handle_writes();
-        forever begin
-            // AW captured fields
-            bit [AXI4_ID_WIDTH-1:0]   aw_id;
-            bit [AXI4_ADDR_WIDTH-1:0] aw_addr;
-            bit [7:0]                 aw_len;
-            bit [2:0]                 aw_size;
-            bit [1:0]                 aw_burst;
-            axi4_lock_e               aw_lock;
-
-            // W buffered data (collected independently via WLAST)
-            bit [AXI4_DATA_WIDTH-1:0] w_data_q[$];
-            bit [AXI4_STRB_WIDTH-1:0] w_strb_q[$];
-
-            w_data_q.delete();
-            w_strb_q.delete();
-
-            // Handle AW and W in parallel — supports any ordering
-            fork
-                // ----- AW handshake (address phase) -----
-                begin : aw_phase
-                    do @(vif.slave_cb);
-                    while (!vif.slave_cb.AWVALID);
-
-                    aw_id    = vif.slave_cb.AWID;
-                    aw_addr  = vif.slave_cb.AWADDR;
-                    aw_len   = vif.slave_cb.AWLEN;
-                    aw_size  = vif.slave_cb.AWSIZE;
-                    aw_burst = vif.slave_cb.AWBURST;
-                    aw_lock  = axi4_lock_e'(vif.slave_cb.AWLOCK);
-
-                    rand_ready_delay();
-                    vif.slave_cb.AWREADY <= 1'b1;
-                    @(vif.slave_cb);
-                    vif.slave_cb.AWREADY <= 1'b0;
-
-                    `uvm_info(get_type_name(),
-                              $sformatf("AW received: ID=0x%0h ADDR=0x%08h LEN=%0d LOCK=%s",
-                                        aw_id, aw_addr, aw_len, aw_lock.name()), UVM_HIGH)
-                end
-
-                // ----- W data collection (WREADY-first handshake) -----
-                //   Slave asserts WREADY first, then waits for WVALID.
-                //   This avoids the stale-WVALID race condition that occurs
-                //   when checking WVALID before WREADY (master keeps WVALID
-                //   high between beats, causing phantom beat captures).
-                begin : w_phase
-                    bit wlast_seen = 0;
-                    while (!wlast_seen) begin
-                        // Apply back-pressure delay before accepting next beat
-                        rand_ready_delay();
-
-                        // Assert WREADY — slave is ready to accept data
-                        vif.slave_cb.WREADY <= 1'b1;
-
-                        // Wait for WVALID at the same clock edge (AXI4 handshake)
-                        do @(vif.slave_cb);
-                        while (!vif.slave_cb.WVALID);
-
-                        // Handshake complete — capture data at this point
-                        w_data_q.push_back(vif.slave_cb.WDATA);
-                        w_strb_q.push_back(vif.slave_cb.WSTRB);
-                        wlast_seen = vif.slave_cb.WLAST;
-
-                        // Deassert WREADY and wait 1 cycle to ensure clean separation
-                        vif.slave_cb.WREADY <= 1'b0;
-                        @(vif.slave_cb);
-                    end
-                end
-            join
-
-            // ----- Post-join verification -----
-            // Check that W beat count matches AW burst length
-            if (w_data_q.size() != aw_len + 1)
-                `uvm_error(get_type_name(),
-                           $sformatf("W beat count mismatch: expected %0d, got %0d",
-                                     aw_len + 1, w_data_q.size()))
-
-            // ----- Determine Write Response (BRESP) & Memory Write Permission -----
-            begin
-                axi4_resp_e wr_resp;
-                bit do_write = 1;
-
-                if (aw_addr >= 32'hF000_0000) begin
-                    wr_resp = AXI4_RESP_DECERR;
-                    do_write = 0;
-                end else if (aw_addr >= 32'hE000_0000) begin
-                    wr_resp = AXI4_RESP_SLVERR;
-                    do_write = 0;
-                end else if (aw_lock == AXI4_LOCK_EXCLUSIVE) begin
-                    // Exclusive Write: succeeds only if reservation exists and matches address
-                    if (excl_valid.exists(aw_id) && excl_valid[aw_id] && excl_table[aw_id] == aw_addr) begin
-                        wr_resp = AXI4_RESP_EXOKAY;
-                        excl_valid[aw_id] = 0; // Consume reservation
-                    end else begin
-                        wr_resp = AXI4_RESP_OKAY; // Returns OKAY, but write is ignored
-                        do_write = 0;
-                    end
-                end else begin
-                    wr_resp = AXI4_RESP_OKAY;
-                    // Non-exclusive write invalidates any outstanding reservations to this address
-                    foreach (excl_table[id]) begin
-                        if (excl_valid[id] && excl_table[id] == aw_addr) begin
-                            excl_valid[id] = 0;
-                        end
-                    end
-                end
-
-                // ----- Store buffered data to memory (if write allowed) -----
-                if (do_write) begin
-                    for (int beat = 0; beat < w_data_q.size(); beat++) begin
-                        bit [AXI4_ADDR_WIDTH-1:0] beat_addr;
-                        bit [AXI4_ADDR_WIDTH-1:0] aligned_beat_addr;
-                        beat_addr = calc_beat_addr(aw_addr, beat, aw_size, aw_burst, aw_len);
-                        aligned_beat_addr = (beat_addr / AXI4_STRB_WIDTH) * AXI4_STRB_WIDTH;
-                        for (int b = 0; b < AXI4_STRB_WIDTH; b++) begin
-                            if (w_strb_q[beat][b])
-                                mem[aligned_beat_addr + b] = w_data_q[beat][b*8 +: 8];
-                        end
-                    end
-                end
-
-                // ----- B response (with optional delay) -----
-                rand_resp_delay();
-                @(vif.slave_cb);
-                vif.slave_cb.BID    <= aw_id;
-                vif.slave_cb.BRESP  <= wr_resp;
-                vif.slave_cb.BVALID <= 1'b1;
-
-                do @(vif.slave_cb);
-                while (!vif.slave_cb.BREADY);
-
-                vif.slave_cb.BVALID <= 1'b0;
-
-                `uvm_info(get_type_name(),
-                          $sformatf("Write complete: ID=0x%0h ADDR=0x%08h RESP=%s  %0d beats processed",
-                                    aw_id, aw_addr, wr_resp.name(), aw_len + 1), UVM_MEDIUM)
-            end
-        end
+        fork
+            collect_aw();
+            collect_w();
+            process_writes();
+            drive_b();
+        join
     endtask : handle_writes
 
+    // ----- AW Collector: listens and handshakes AW address phases -----
+    task collect_aw();
+        forever begin
+            aw_info_t info;
+            do @(vif.slave_cb);
+            while (!vif.slave_cb.AWVALID);
+
+            info.id    = vif.slave_cb.AWID;
+            info.addr  = vif.slave_cb.AWADDR;
+            info.len   = vif.slave_cb.AWLEN;
+            info.size  = vif.slave_cb.AWSIZE;
+            info.burst = vif.slave_cb.AWBURST;
+            info.lock  = axi4_lock_e'(vif.slave_cb.AWLOCK);
+
+            rand_ready_delay();
+            vif.slave_cb.AWREADY <= 1'b1;
+            @(vif.slave_cb);
+            vif.slave_cb.AWREADY <= 1'b0;
+
+            `uvm_info(get_type_name(),
+                      $sformatf("AW received: ID=0x%0h ADDR=0x%08h LEN=%0d LOCK=%s",
+                                info.id, info.addr, info.len, info.lock.name()), UVM_HIGH)
+            aw_fifo.push_back(info);
+        end
+    endtask : collect_aw
+
+    // ----- W Collector: collects W bursts from master -----
+    task collect_w();
+        forever begin
+            w_burst_t burst;
+            bit wlast_seen = 0;
+            while (!wlast_seen) begin
+                rand_ready_delay();
+                vif.slave_cb.WREADY <= 1'b1;
+
+                do @(vif.slave_cb);
+                while (!vif.slave_cb.WVALID);
+
+                burst.data_q.push_back(vif.slave_cb.WDATA);
+                burst.strb_q.push_back(vif.slave_cb.WSTRB);
+                wlast_seen = vif.slave_cb.WLAST;
+
+                vif.slave_cb.WREADY <= 1'b0;
+                @(vif.slave_cb);
+            end
+            w_fifo.push_back(burst);
+        end
+    endtask : collect_w
+
+    // ----- Write Executor: matches AW and W, writes to memory -----
+    task process_writes();
+        forever begin
+            aw_info_t aw;
+            w_burst_t w;
+            axi4_resp_e wr_resp;
+            bit do_write = 1;
+
+            wait (aw_fifo.size() > 0 && w_fifo.size() > 0);
+            aw = aw_fifo.pop_front();
+            w  = w_fifo.pop_front();
+
+            if (w.data_q.size() != aw.len + 1)
+                `uvm_error(get_type_name(),
+                           $sformatf("W beat count mismatch: expected %0d, got %0d",
+                                     aw.len + 1, w.data_q.size()))
+
+            if (aw.addr >= 32'hF000_0000) begin
+                wr_resp = AXI4_RESP_DECERR;
+                do_write = 0;
+            end else if (aw.addr >= 32'hE000_0000) begin
+                wr_resp = AXI4_RESP_SLVERR;
+                do_write = 0;
+            end else if (aw.lock == AXI4_LOCK_EXCLUSIVE) begin
+                if (excl_valid.exists(aw.id) && excl_valid[aw.id] && excl_table[aw.id] == aw.addr) begin
+                    wr_resp = AXI4_RESP_EXOKAY;
+                    excl_valid[aw.id] = 0;
+                end else begin
+                    wr_resp = AXI4_RESP_OKAY;
+                    do_write = 0;
+                end
+            end else begin
+                wr_resp = AXI4_RESP_OKAY;
+                foreach (excl_table[id]) begin
+                    if (excl_valid[id] && excl_table[id] == aw.addr) begin
+                        excl_valid[id] = 0;
+                    end
+                end
+            end
+
+            if (do_write) begin
+                for (int beat = 0; beat < w.data_q.size(); beat++) begin
+                    bit [AXI4_ADDR_WIDTH-1:0] beat_addr;
+                    bit [AXI4_ADDR_WIDTH-1:0] aligned_beat_addr;
+                    beat_addr = calc_beat_addr(aw.addr, beat, aw.size, aw.burst, aw.len);
+                    aligned_beat_addr = (beat_addr / AXI4_STRB_WIDTH) * AXI4_STRB_WIDTH;
+                    for (int b = 0; b < AXI4_STRB_WIDTH; b++) begin
+                        if (w.strb_q[beat][b])
+                            mem[aligned_beat_addr + b] = w.data_q[beat][b*8 +: 8];
+                    end
+                end
+            end
+
+            begin
+                b_resp_t b;
+                b.id = aw.id;
+                b.resp = wr_resp;
+                b_fifo.push_back(b);
+            end
+        end
+    endtask : process_writes
+
+    // ----- B Driver: drives BID and BRESP on the B channel -----
+    task drive_b();
+        forever begin
+            b_resp_t b;
+            wait (b_fifo.size() > 0);
+            b = b_fifo.pop_front();
+
+            rand_resp_delay();
+            @(vif.slave_cb);
+            vif.slave_cb.BID    <= b.id;
+            vif.slave_cb.BRESP  <= b.resp;
+            vif.slave_cb.BVALID <= 1'b1;
+
+            do @(vif.slave_cb);
+            while (!vif.slave_cb.BREADY);
+
+            vif.slave_cb.BVALID <= 1'b0;
+            `uvm_info(get_type_name(),
+                      $sformatf("Write complete: ID=0x%0h RESP=%s", b.id, b.resp.name()), UVM_MEDIUM)
+        end
+    endtask : drive_b
+
     // =========================================================================
-    // Handle Reads — forever loop processing read requests
-    //   1. Wait for AR handshake, capture address info
-    //   2. Read data from memory, send R beats with RLAST
+    // Handle Reads — forks collector and driver to support outstanding reads.
     // =========================================================================
     task handle_reads();
-        bit [AXI4_ID_WIDTH-1:0]   ar_id;
-        bit [AXI4_ADDR_WIDTH-1:0] ar_addr;
-        bit [7:0]                 ar_len;
-        bit [2:0]                 ar_size;
-        bit [1:0]                 ar_burst;
-        axi4_lock_e               ar_lock;
+        fork
+            collect_ar();
+            drive_r();
+        join
+    endtask : handle_reads
 
+    // ----- AR Collector: listens and handshakes AR address phases -----
+    task collect_ar();
         forever begin
-            // ----- AR handshake -----
+            ar_info_t info;
             do @(vif.slave_cb);
             while (!vif.slave_cb.ARVALID);
 
-            // Capture address info
-            ar_id    = vif.slave_cb.ARID;
-            ar_addr  = vif.slave_cb.ARADDR;
-            ar_len   = vif.slave_cb.ARLEN;
-            ar_size  = vif.slave_cb.ARSIZE;
-            ar_burst = vif.slave_cb.ARBURST;
-            ar_lock  = axi4_lock_e'(vif.slave_cb.ARLOCK);
+            info.id    = vif.slave_cb.ARID;
+            info.addr  = vif.slave_cb.ARADDR;
+            info.len   = vif.slave_cb.ARLEN;
+            info.size  = vif.slave_cb.ARSIZE;
+            info.burst = vif.slave_cb.ARBURST;
+            info.lock  = axi4_lock_e'(vif.slave_cb.ARLOCK);
 
-            // Assert ARREADY to complete handshake (with optional delay)
             rand_ready_delay();
             vif.slave_cb.ARREADY <= 1'b1;
             @(vif.slave_cb);
@@ -299,64 +333,68 @@ class axi4_slave_driver extends uvm_driver #(axi4_transaction);
 
             `uvm_info(get_type_name(),
                       $sformatf("AR received: ID=0x%0h ADDR=0x%08h LEN=%0d LOCK=%s",
-                                ar_id, ar_addr, ar_len, ar_lock.name()), UVM_HIGH)
-
-            // Determine read response (RRESP) & record exclusive reservation if needed
-            begin
-                axi4_resp_e rd_resp;
-                if (ar_addr >= 32'hF000_0000) begin
-                    rd_resp = AXI4_RESP_DECERR;
-                end else if (ar_addr >= 32'hE000_0000) begin
-                    rd_resp = AXI4_RESP_SLVERR;
-                end else if (ar_lock == AXI4_LOCK_EXCLUSIVE) begin
-                    rd_resp = AXI4_RESP_EXOKAY;
-                    excl_table[ar_id] = ar_addr;
-                    excl_valid[ar_id] = 1;
-                end else begin
-                    rd_resp = AXI4_RESP_OKAY;
-                end
-
-                // ----- R beats -----
-                for (int beat = 0; beat <= ar_len; beat++) begin
-                    bit [AXI4_ADDR_WIDTH-1:0] beat_addr;
-                    bit [AXI4_DATA_WIDTH-1:0] rdata;
-                    int unsigned num_bytes = 1 << ar_size;
-
-                    // Read data from memory (byte-by-byte) and place in correct byte lanes
-                    beat_addr = calc_beat_addr(ar_addr, beat, ar_size, ar_burst, ar_len);
-                    rdata = '0;
-                    for (int offset = 0; offset < num_bytes; offset++) begin
-                        bit [AXI4_ADDR_WIDTH-1:0] byte_addr;
-                        int unsigned lane;
-                        byte_addr = beat_addr + offset;
-                        lane = byte_addr % AXI4_STRB_WIDTH;
-                        if (mem.exists(byte_addr))
-                            rdata[lane*8 +: 8] = mem[byte_addr];
-                    end
-
-                    // Drive R channel (with optional response delay)
-                    rand_resp_delay();
-                    @(vif.slave_cb);
-                    vif.slave_cb.RID    <= ar_id;
-                    vif.slave_cb.RDATA  <= rdata;
-                    vif.slave_cb.RRESP  <= rd_resp;
-                    vif.slave_cb.RLAST  <= (beat == ar_len) ? 1'b1 : 1'b0;
-                    vif.slave_cb.RVALID <= 1'b1;
-
-                    // Wait for RREADY handshake
-                    do @(vif.slave_cb);
-                    while (!vif.slave_cb.RREADY);
-
-                    vif.slave_cb.RVALID <= 1'b0;
-                    vif.slave_cb.RLAST  <= 1'b0;
-                end
-
-                `uvm_info(get_type_name(),
-                          $sformatf("Read complete: ID=0x%0h ADDR=0x%08h RESP=%s  %0d beats sent",
-                                    ar_id, ar_addr, rd_resp.name(), ar_len + 1), UVM_MEDIUM)
-            end
+                                info.id, info.addr, info.len, info.lock.name()), UVM_HIGH)
+            ar_fifo.push_back(info);
         end
-    endtask : handle_reads
+    endtask : collect_ar
+
+    // ----- R Driver: reads from memory and drives R channel beats -----
+    task drive_r();
+        forever begin
+            ar_info_t ar;
+            axi4_resp_e rd_resp;
+
+            wait (ar_fifo.size() > 0);
+            ar = ar_fifo.pop_front();
+
+            if (ar.addr >= 32'hF000_0000) begin
+                rd_resp = AXI4_RESP_DECERR;
+            end else if (ar.addr >= 32'hE000_0000) begin
+                rd_resp = AXI4_RESP_SLVERR;
+            end else if (ar.lock == AXI4_LOCK_EXCLUSIVE) begin
+                rd_resp = AXI4_RESP_EXOKAY;
+                excl_table[ar.id] = ar.addr;
+                excl_valid[ar.id] = 1;
+            end else begin
+                rd_resp = AXI4_RESP_OKAY;
+            end
+
+            for (int beat = 0; beat <= ar.len; beat++) begin
+                bit [AXI4_ADDR_WIDTH-1:0] beat_addr;
+                bit [AXI4_DATA_WIDTH-1:0] rdata;
+                int unsigned num_bytes = 1 << ar.size;
+
+                beat_addr = calc_beat_addr(ar.addr, beat, ar.size, ar.burst, ar.len);
+                rdata = '0;
+                for (int offset = 0; offset < num_bytes; offset++) begin
+                    bit [AXI4_ADDR_WIDTH-1:0] byte_addr;
+                    int unsigned lane;
+                    byte_addr = beat_addr + offset;
+                    lane = byte_addr % AXI4_STRB_WIDTH;
+                    if (mem.exists(byte_addr))
+                        rdata[lane*8 +: 8] = mem[byte_addr];
+                end
+
+                rand_resp_delay();
+                @(vif.slave_cb);
+                vif.slave_cb.RID    <= ar.id;
+                vif.slave_cb.RDATA  <= rdata;
+                vif.slave_cb.RRESP  <= rd_resp;
+                vif.slave_cb.RLAST  <= (beat == ar.len) ? 1'b1 : 1'b0;
+                vif.slave_cb.RVALID <= 1'b1;
+
+                do @(vif.slave_cb);
+                while (!vif.slave_cb.RREADY);
+
+                vif.slave_cb.RVALID <= 1'b0;
+                vif.slave_cb.RLAST  <= 1'b0;
+            end
+
+            `uvm_info(get_type_name(),
+                      $sformatf("Read complete: ID=0x%0h ADDR=0x%08h RESP=%s  %0d beats sent",
+                                ar.id, ar.addr, rd_resp.name(), ar.len + 1), UVM_MEDIUM)
+        end
+    endtask : drive_r
 
     // =========================================================================
     // calc_beat_addr — Calculate address for each beat in a burst
