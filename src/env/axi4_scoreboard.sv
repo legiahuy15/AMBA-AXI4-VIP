@@ -193,13 +193,15 @@ class axi4_scoreboard extends uvm_scoreboard;
     function void update_ref_mem(axi4_transaction tr);
         for (int beat = 0; beat <= tr.len; beat++) begin
             bit [AXI4_ADDR_WIDTH-1:0] beat_addr;
+            bit [AXI4_ADDR_WIDTH-1:0] aligned_beat_addr;
             beat_addr = calc_beat_addr(tr.addr, beat, tr.size, tr.burst, tr.len);
+            aligned_beat_addr = (beat_addr / AXI4_STRB_WIDTH) * AXI4_STRB_WIDTH;
             for (int b = 0; b < AXI4_STRB_WIDTH; b++) begin
                 if (tr.strb[beat][b]) begin
-                    ref_mem[beat_addr + b] = tr.data[beat][b*8 +: 8];
+                    ref_mem[aligned_beat_addr + b] = tr.data[beat][b*8 +: 8];
                     `uvm_info(get_type_name(),
                               $sformatf("[REF_MEM_WRITE] Addr=0x%08h Data=0x%02h",
-                                        beat_addr + b, tr.data[beat][b*8 +: 8]), UVM_HIGH)
+                                        aligned_beat_addr + b, tr.data[beat][b*8 +: 8]), UVM_HIGH)
                 end
             end
         end
@@ -213,25 +215,39 @@ class axi4_scoreboard extends uvm_scoreboard;
             bit [AXI4_ADDR_WIDTH-1:0] beat_addr;
             bit [AXI4_DATA_WIDTH-1:0] expected_data;
             bit [AXI4_DATA_WIDTH-1:0] actual_data;
+            int unsigned num_bytes = 1 << tr.size;
             
             beat_addr = calc_beat_addr(tr.addr, beat, tr.size, tr.burst, tr.len);
             expected_data = '0;
             actual_data   = tr.data[beat];
 
-            for (int b = 0; b < (1 << tr.size); b++) begin
-                if (ref_mem.exists(beat_addr + b)) begin
-                    expected_data[b*8 +: 8] = ref_mem[beat_addr + b];
+            for (int offset = 0; offset < num_bytes; offset++) begin
+                bit [AXI4_ADDR_WIDTH-1:0] byte_addr;
+                int unsigned lane;
+                byte_addr = beat_addr + offset;
+                lane = byte_addr % AXI4_STRB_WIDTH;
+                if (ref_mem.exists(byte_addr)) begin
+                    expected_data[lane*8 +: 8] = ref_mem[byte_addr];
                 end
             end
 
-            for (int b = 0; b < (1 << tr.size); b++) begin
-                bit [7:0] exp_byte = expected_data[b*8 +: 8];
-                bit [7:0] act_byte = actual_data[b*8 +: 8];
+            for (int offset = 0; offset < num_bytes; offset++) begin
+                bit [AXI4_ADDR_WIDTH-1:0] byte_addr;
+                int unsigned lane;
+                bit [7:0] exp_byte;
+                bit [7:0] act_byte;
+
+                byte_addr = beat_addr + offset;
+                lane = byte_addr % AXI4_STRB_WIDTH;
+                
+                exp_byte = expected_data[lane*8 +: 8];
+                act_byte = actual_data[lane*8 +: 8];
+
                 if (exp_byte != act_byte) begin
                     mismatch_count++;
                     `uvm_error(get_type_name(),
-                               $sformatf("[DATA_INTEGRITY_FAIL] Read mismatch at Beat %0d, Byte %0d! Addr=0x%08h | Expected=0x%02h, Actual=0x%02h",
-                                         beat, b, beat_addr + b, exp_byte, act_byte))
+                               $sformatf("[DATA_INTEGRITY_FAIL] Read mismatch at Beat %0d, Byte Lane %0d! Addr=0x%08h | Expected=0x%02h, Actual=0x%02h",
+                                         beat, lane, byte_addr, exp_byte, act_byte))
                 end
             end
         end
