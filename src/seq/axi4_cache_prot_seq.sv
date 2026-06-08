@@ -26,7 +26,7 @@ class axi4_cache_prot_seq extends axi4_base_sequence;
         for (int c = 0; c < 16; c++) begin
             axi4_transaction wr_tr, rd_tr;
 
-            // ---- Write Phase ----
+            // Write Phase
             wr_tr = axi4_transaction::type_id::create($sformatf("cache_prot_wr_%0d", c));
             start_item(wr_tr);
             if (!wr_tr.randomize() with {
@@ -39,7 +39,7 @@ class axi4_cache_prot_seq extends axi4_base_sequence;
             }) `uvm_fatal(get_type_name(), $sformatf("Randomization failed for cache/prot write #%0d", c))
             finish_item(wr_tr);
 
-            // ---- Read Phase ----
+            // Read Phase
             rd_tr = axi4_transaction::type_id::create($sformatf("cache_prot_rd_%0d", c));
             start_item(rd_tr);
             if (!rd_tr.randomize() with {

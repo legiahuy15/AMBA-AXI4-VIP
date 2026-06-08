@@ -43,7 +43,7 @@ class axi4_exclusive_seq extends axi4_base_sequence;
             `uvm_info(get_type_name(), $sformatf("[%0d/%0d] Running Exclusive Read-Write pair to ADDR=0x%08h ID=0x%0h", 
                                                  i + 1, num_iterations, target_addr, target_id), UVM_MEDIUM)
 
-            // ---- Phase 1: Exclusive Read ----
+            // Phase 1: Exclusive Read
             rd_tr = axi4_transaction::type_id::create("excl_rd_tr");
             start_item(rd_tr);
             if (!rd_tr.randomize() with {
@@ -59,7 +59,7 @@ class axi4_exclusive_seq extends axi4_base_sequence;
 
             `uvm_info(get_type_name(), $sformatf("Exclusive Read complete: RESP=%s", rd_tr.rresp[0].name()), UVM_HIGH)
 
-            // ---- Phase 2: Exclusive Write (Successful) ----
+            // Phase 2: Exclusive Write (Successful)
             wr_tr = axi4_transaction::type_id::create("excl_wr_tr");
             start_item(wr_tr);
             if (!wr_tr.randomize() with {
@@ -75,7 +75,7 @@ class axi4_exclusive_seq extends axi4_base_sequence;
 
             `uvm_info(get_type_name(), $sformatf("Exclusive Write complete: RESP=%s", wr_tr.resp.name()), UVM_HIGH)
 
-            // ---- Phase 3: Exclusive Write without matching Read (Should Fail/Return OKAY) ----
+            // Phase 3: Exclusive Write without matching Read (Should Fail/Return OKAY)
             fail_wr_tr = axi4_transaction::type_id::create("fail_excl_wr_tr");
             start_item(fail_wr_tr);
             if (!fail_wr_tr.randomize() with {

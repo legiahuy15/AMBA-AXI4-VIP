@@ -43,6 +43,11 @@ class axi4_scoreboard extends uvm_scoreboard;
     axi4_transaction slave_rd_q[$];
 
     // =========================================================================
+    // Reference Memory Model for checking read-after-write data integrity
+    // =========================================================================
+    bit [7:0] ref_mem [bit [AXI4_ADDR_WIDTH-1:0]];
+
+    // =========================================================================
     // Statistics
     // =========================================================================
     int unsigned match_count    = 0;
@@ -137,6 +142,102 @@ class axi4_scoreboard extends uvm_scoreboard;
     endfunction : try_match
 
     // =========================================================================
+    // calc_beat_addr — Calculate address for each beat in a burst
+    // =========================================================================
+    function bit [AXI4_ADDR_WIDTH-1:0] calc_beat_addr(
+        bit [AXI4_ADDR_WIDTH-1:0] start_addr,
+        int unsigned              beat_idx,
+        bit [2:0]                 size,
+        bit [1:0]                 burst_type,
+        bit [7:0]                 len
+    );
+        int unsigned num_bytes  = 1 << size;
+        int unsigned burst_len  = len + 1;
+        bit [AXI4_ADDR_WIDTH-1:0] aligned_addr;
+        bit [AXI4_ADDR_WIDTH-1:0] addr;
+
+        aligned_addr = (start_addr / num_bytes) * num_bytes;
+
+        case (burst_type)
+            2'b00: begin // FIXED
+                addr = start_addr;
+            end
+            2'b01: begin // INCR
+                if (beat_idx == 0)
+                    addr = start_addr;
+                else
+                    addr = aligned_addr + beat_idx * num_bytes;
+            end
+            2'b10: begin // WRAP
+                int unsigned total_size   = num_bytes * burst_len;
+                bit [AXI4_ADDR_WIDTH-1:0] wrap_boundary;
+                wrap_boundary = (start_addr / total_size) * total_size;
+
+                if (beat_idx == 0)
+                    addr = start_addr;
+                else begin
+                    addr = aligned_addr + beat_idx * num_bytes;
+                    if (addr >= wrap_boundary + total_size)
+                        addr = addr - total_size;
+                end
+            end
+            default: addr = start_addr;
+        endcase
+
+        return addr;
+    endfunction : calc_beat_addr
+
+    // =========================================================================
+    // update_ref_mem — update scoreboard's reference memory on WRITES
+    // =========================================================================
+    function void update_ref_mem(axi4_transaction tr);
+        for (int beat = 0; beat <= tr.len; beat++) begin
+            bit [AXI4_ADDR_WIDTH-1:0] beat_addr;
+            beat_addr = calc_beat_addr(tr.addr, beat, tr.size, tr.burst, tr.len);
+            for (int b = 0; b < AXI4_STRB_WIDTH; b++) begin
+                if (tr.strb[beat][b]) begin
+                    ref_mem[beat_addr + b] = tr.data[beat][b*8 +: 8];
+                    `uvm_info(get_type_name(),
+                              $sformatf("[REF_MEM_WRITE] Addr=0x%08h Data=0x%02h",
+                                        beat_addr + b, tr.data[beat][b*8 +: 8]), UVM_HIGH)
+                end
+            end
+        end
+    endfunction : update_ref_mem
+
+    // =========================================================================
+    // check_ref_mem — verify READ transaction against reference memory
+    // =========================================================================
+    function void check_ref_mem(axi4_transaction tr);
+        for (int beat = 0; beat <= tr.len; beat++) begin
+            bit [AXI4_ADDR_WIDTH-1:0] beat_addr;
+            bit [AXI4_DATA_WIDTH-1:0] expected_data;
+            bit [AXI4_DATA_WIDTH-1:0] actual_data;
+            
+            beat_addr = calc_beat_addr(tr.addr, beat, tr.size, tr.burst, tr.len);
+            expected_data = '0;
+            actual_data   = tr.data[beat];
+
+            for (int b = 0; b < (1 << tr.size); b++) begin
+                if (ref_mem.exists(beat_addr + b)) begin
+                    expected_data[b*8 +: 8] = ref_mem[beat_addr + b];
+                end
+            end
+
+            for (int b = 0; b < (1 << tr.size); b++) begin
+                bit [7:0] exp_byte = expected_data[b*8 +: 8];
+                bit [7:0] act_byte = actual_data[b*8 +: 8];
+                if (exp_byte != act_byte) begin
+                    mismatch_count++;
+                    `uvm_error(get_type_name(),
+                               $sformatf("[DATA_INTEGRITY_FAIL] Read mismatch at Beat %0d, Byte %0d! Addr=0x%08h | Expected=0x%02h, Actual=0x%02h",
+                                         beat, b, beat_addr + b, exp_byte, act_byte))
+                end
+            end
+        end
+    endfunction : check_ref_mem
+
+    // =========================================================================
     // compare_transactions — detailed comparison using do_compare
     //   Uses axi4_transaction::compare() which internally calls do_compare
     //   for all fields including the manually-handled rresp[] array.
@@ -152,6 +253,11 @@ class axi4_scoreboard extends uvm_scoreboard;
                       $sformatf("[%s] MATCH #%0d: ID=0x%0h ADDR=0x%08h LEN=%0d",
                                 dir_str, match_count,
                                 actual.id, actual.addr, actual.len), UVM_MEDIUM)
+            if (actual.dir == AXI4_WRITE) begin
+                update_ref_mem(actual);
+            end else begin
+                check_ref_mem(actual);
+            end
         end else begin
             mismatch_count++;
             `uvm_error(get_type_name(),

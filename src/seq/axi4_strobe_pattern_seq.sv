@@ -24,7 +24,7 @@ class axi4_strobe_pattern_seq extends axi4_base_sequence;
 
         `uvm_info(get_type_name(), "Starting write strobe pattern sequence", UVM_MEDIUM)
 
-        // ---- Pattern 1: All bytes enabled (full-word write) ----
+        // Pattern 1: All bytes enabled (full-word write)
         tr = axi4_transaction::type_id::create("strb_all_tr");
         start_item(tr);
         if (!tr.randomize() with {
@@ -39,7 +39,7 @@ class axi4_strobe_pattern_seq extends axi4_base_sequence;
         finish_item(tr);
         `uvm_info(get_type_name(), "Sent Write with all-bytes strobe (4'b1111)", UVM_HIGH)
 
-        // ---- Pattern 2: No bytes enabled (sparse transaction) ----
+        // Pattern 2: No bytes enabled (sparse transaction)
         tr = axi4_transaction::type_id::create("strb_none_tr");
         start_item(tr);
         if (!tr.randomize() with {
@@ -54,7 +54,7 @@ class axi4_strobe_pattern_seq extends axi4_base_sequence;
         finish_item(tr);
         `uvm_info(get_type_name(), "Sent Write with zero-bytes strobe (4'b0000)", UVM_HIGH)
 
-        // ---- Pattern 3: Partial strobe patterns (walking ones and half-words) ----
+        // Pattern 3: Partial strobe patterns (walking ones and half-words)
         for (int p = 0; p < 6; p++) begin
             bit [3:0] test_strb;
             case (p)

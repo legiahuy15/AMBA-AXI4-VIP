@@ -13,11 +13,16 @@ class axi4_burst_sweep_seq extends axi4_base_sequence;
 
     `uvm_object_utils(axi4_burst_sweep_seq)
 
+    // =========================================================================
     // Constructor
+    // =========================================================================
     function new(string name = "axi4_burst_sweep_seq");
         super.new(name);
     endfunction : new
 
+    // =========================================================================
+    // Body task
+    // =========================================================================
     virtual task body();
         axi4_transaction tr;
         int count = 0;
