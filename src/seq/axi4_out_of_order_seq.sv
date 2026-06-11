@@ -74,7 +74,7 @@ class axi4_out_of_order_seq extends axi4_base_sequence;
                             finish_item(wr_tr);
 
                             // Wait for response
-                            wait(wr_tr.done_event.triggered);
+                            wait(wr_tr.done_event.ev.triggered);
 
                             `uvm_info(get_type_name(),
                                       $sformatf("OOO Write [#%0d] complete: ID=0x%0h RESP=%s", 
@@ -113,7 +113,7 @@ class axi4_out_of_order_seq extends axi4_base_sequence;
                             finish_item(rd_tr);
 
                             // Wait for response (entire burst)
-                            wait(rd_tr.done_event.triggered);
+                            wait(rd_tr.done_event.ev.triggered);
 
                             `uvm_info(get_type_name(),
                                       $sformatf("OOO Read [#%0d] complete: ID=0x%0h", idx, rd_tr.id),

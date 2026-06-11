@@ -80,7 +80,7 @@ class axi4_outstanding_seq extends axi4_base_sequence;
 
                             // Wait for actual B response on the bus before
                             // releasing the semaphore slot.
-                            wait(wr_tr.done_event.triggered);
+                            wait(wr_tr.done_event.ev.triggered);
 
                             `uvm_info(get_type_name(),
                                       $sformatf("Outstanding Write [#%0d] complete: ID=0x%0h", idx, wr_tr.id),
@@ -119,7 +119,7 @@ class axi4_outstanding_seq extends axi4_base_sequence;
 
                             // Wait for actual R response (all beats) on the bus
                             // before releasing the semaphore slot.
-                            wait(rd_tr.done_event.triggered);
+                            wait(rd_tr.done_event.ev.triggered);
 
                             `uvm_info(get_type_name(),
                                       $sformatf("Outstanding Read [#%0d] complete: ID=0x%0h", idx, rd_tr.id),

@@ -93,3 +93,12 @@
         AXI4_WR_AW_BEFORE_W = 2'b01,
         AXI4_WR_W_BEFORE_AW = 2'b10
     } axi4_wr_order_e;
+
+    // ---------------------------------------------------------------------------
+    // 8. Event wrapper class
+    //    Used to wrap SystemVerilog built-in event type, because event is not a
+    //    class and cannot be dynamically instantiated with 'new'.
+    // ---------------------------------------------------------------------------
+    class axi4_event_wrapper;
+        event ev;
+    endclass
