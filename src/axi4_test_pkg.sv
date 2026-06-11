@@ -19,9 +19,10 @@ package axi4_test_pkg;
     // Tests  (src/test/)
     // =========================================================================
     `include "test/axi4_base_test.sv"
-    `include "test/axi4_wr_rd_test.sv"
+    `include "test/axi4_sanity_test.sv"
     `include "test/axi4_random_test.sv"
     `include "test/axi4_outstanding_test.sv"
+    `include "test/axi4_out_of_order_test.sv"
     `include "test/axi4_exclusive_test.sv"
     `include "test/axi4_unaligned_test.sv"
     `include "test/axi4_cache_prot_test.sv"

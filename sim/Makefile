@@ -27,7 +27,7 @@ SV_SOURCES = \
 # ==============================================================================
 # 2. Configurable Variables (Can be overridden via command line)
 # ==============================================================================
-TESTNAME      ?= axi4_wr_rd_test
+TESTNAME      ?= axi4_sanity_test
 # Set to 'random' or a specific integer (e.g., 42)
 SEED          ?= random
 UVM_VERBOSITY ?= UVM_LOW
@@ -40,7 +40,8 @@ USE_COVERAGE  ?= 1
 PLUSARGS      += +DUMP_VCD
 
 # List of tests to run during a regression
-TEST_LIST     ?= axi4_wr_rd_test axi4_random_test axi4_outstanding_test \
+TEST_LIST     ?= axi4_sanity_test axi4_random_test axi4_outstanding_test \
+                 axi4_out_of_order_test \
                  axi4_exclusive_test axi4_unaligned_test axi4_cache_prot_test \
                  axi4_strobe_test axi4_burst_sweep_test
 

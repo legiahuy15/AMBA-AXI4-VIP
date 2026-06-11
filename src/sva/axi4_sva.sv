@@ -573,6 +573,33 @@ module axi4_sva #(
         else $error("[SVA] RRESP is X or Z at handshake");
 
     // =========================================================================
+    //  11. READ INTERLEAVING CONSTRAINT — No read data interleaving is allowed.
+    //      Once RVALID & RREADY handshakes, all beats must be for the same RID
+    //      until RLAST is asserted and handshaked.
+    // =========================================================================
+    logic                    active_r_burst;
+    logic [ID_WIDTH-1:0]     active_rid;
+
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            active_r_burst <= 1'b0;
+            active_rid     <= '0;
+        end else if (RVALID && RREADY) begin
+            if (!active_r_burst) begin
+                active_r_burst <= !RLAST;
+                active_rid     <= RID;
+            end else begin
+                READ_NO_INTERLEAVE : assert (RID == active_rid)
+                    else $error("[SVA] Vi phạm: Phát hiện Read Data Interleaving! RID thay đổi từ 0x%0h sang 0x%0h trước khi RLAST được thiết lập.",
+                                active_rid, RID);
+                if (RLAST) begin
+                    active_r_burst <= 1'b0;
+                end
+            end
+        end
+    end
+
+    // =========================================================================
     //  COVER PROPERTIES — Track protocol scenarios for functional coverage
     // =========================================================================
 
