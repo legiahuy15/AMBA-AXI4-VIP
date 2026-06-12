@@ -144,31 +144,31 @@ module axi4_sva #(
     //     VALID must remain asserted until READY (AXI4 spec)
     // =========================================================================
 
-    // --- AW Channel ---
+    // AW Channel
     property p_awvalid_stable;
         @(posedge clk) disable iff (!rst_n)
         AWVALID && !AWREADY |=> AWVALID;
     endproperty
 
-    // --- W Channel ---
+    // W Channel
     property p_wvalid_stable;
         @(posedge clk) disable iff (!rst_n)
         WVALID && !WREADY |=> WVALID;
     endproperty
 
-    // --- B Channel ---
+    // B Channel
     property p_bvalid_stable;
         @(posedge clk) disable iff (!rst_n)
         BVALID && !BREADY |=> BVALID;
     endproperty
 
-    // --- AR Channel ---
+    // AR Channel
     property p_arvalid_stable;
         @(posedge clk) disable iff (!rst_n)
         ARVALID && !ARREADY |=> ARVALID;
     endproperty
 
-    // --- R Channel ---
+    // R Channel
     property p_rvalid_stable;
         @(posedge clk) disable iff (!rst_n)
         RVALID && !RREADY |=> RVALID;
@@ -195,7 +195,7 @@ module axi4_sva #(
     //     while VALID is asserted (AXI4 spec)
     // =========================================================================
 
-    // --- AW Channel payload ---
+    // AW Channel payload
     property p_aw_payload_stable;
         @(posedge clk) disable iff (!rst_n)
         AWVALID && !AWREADY |=>
@@ -205,7 +205,7 @@ module axi4_sva #(
             $stable(AWQOS)    && $stable(AWREGION);
     endproperty
 
-    // --- W Channel payload ---
+    // W Channel payload
     //   Only check stability when WVALID was high AND no handshake occurred
     //   on the previous cycle. After a handshake (WVALID && WREADY), the
     //   master may legitimately change data for the next beat while keeping
@@ -216,14 +216,14 @@ module axi4_sva #(
             $stable(WDATA) && $stable(WSTRB) && $stable(WLAST);
     endproperty
 
-    // --- B Channel payload ---
+    // B Channel payload
     property p_b_payload_stable;
         @(posedge clk) disable iff (!rst_n)
         BVALID && !BREADY |=>
             $stable(BID) && $stable(BRESP);
     endproperty
 
-    // --- AR Channel payload ---
+    // AR Channel payload
     property p_ar_payload_stable;
         @(posedge clk) disable iff (!rst_n)
         ARVALID && !ARREADY |=>
@@ -233,7 +233,7 @@ module axi4_sva #(
             $stable(ARQOS)    && $stable(ARREGION);
     endproperty
 
-    // --- R Channel payload ---
+    // R Channel payload
     property p_r_payload_stable;
         @(posedge clk) disable iff (!rst_n)
         RVALID && !RREADY |=>
