@@ -6,6 +6,10 @@
 //               Writes recognisable data patterns (0xDEADBEEF, 0xCAFEBABE, …)
 //               and reads them back. On waveform: WDATA == RDATA is visually
 //               obvious. Only 4 transactions — ideal for report screenshots.
+//
+//               Slave ready/response delays are intentionally set so that
+//               each beat's data value persists on the bus for several clock
+//               cycles, making waveform captures much clearer.
 //               This file is `included inside axi4_test_pkg.sv.
 //==============================================================================
 
@@ -19,6 +23,21 @@ class axi4_data_integrity_test extends axi4_base_test;
     function new(string name, uvm_component parent);
         super.new(name, parent);
     endfunction : new
+
+    // =========================================================================
+    // Build phase — configure slave delays for cleaner waveform
+    //   ready_delay  : slave waits 1-2 cycles before asserting xREADY
+    //   resp_delay   : slave waits 1-2 cycles before driving B/R response
+    //   This stretches out each handshake so data values are visible
+    //   for multiple clock cycles on waveform screenshots.
+    // =========================================================================
+    function void build_phase(uvm_phase phase);
+        super.build_phase(phase);
+        env_cfg.slave_agent_cfg.ready_delay_min = 1;
+        env_cfg.slave_agent_cfg.ready_delay_max = 2;
+        env_cfg.slave_agent_cfg.resp_delay_min  = 1;
+        env_cfg.slave_agent_cfg.resp_delay_max  = 2;
+    endfunction : build_phase
 
     task run_phase(uvm_phase phase);
         axi4_data_integrity_seq integrity_seq;
