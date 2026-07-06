@@ -164,6 +164,12 @@ class axi4_slave_driver extends uvm_driver #(axi4_transaction);
         ar_fifo.delete();
         id_mutex.delete();
         excl_res.delete();      // drop all exclusive reservations on reset
+
+        // Re-create the R-channel mutex. If reset aborts a drive_r_single thread
+        // while it holds this mutex, the kill (disable fork) skips its put(1),
+        // leaving the old semaphore locked forever. A fresh one guarantees the
+        // R channel is usable again after reset.
+        r_channel_mutex = new(1);
     endtask : reset_signals
 
     // =========================================================================
