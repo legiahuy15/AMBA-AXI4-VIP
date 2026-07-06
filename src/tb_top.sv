@@ -57,7 +57,7 @@ module tb_top;
     //   This is independent of the power-on reset above.
     // =========================================================================
     initial begin
-        uvm_event reset_ev = uvm_event_pool::get_global("axi4_reset_req");
+        automatic uvm_event reset_ev = uvm_event_pool::get_global("axi4_reset_req");
         forever begin
             reset_ev.wait_trigger();
             `uvm_info("TB_TOP", "Mid-sim reset requested — asserting rst_n", UVM_LOW)
@@ -173,7 +173,7 @@ module tb_top;
     //   With the 1ns timescale, the default 10_000_000 ns = 10 ms of sim time.
     // =========================================================================
     initial begin
-        longint unsigned timeout_ns = 10_000_000;  // 10 ms default backup
+        automatic longint unsigned timeout_ns = 10_000_000;  // 10 ms default backup
         void'($value$plusargs("TIMEOUT_NS=%d", timeout_ns));
         #(timeout_ns);
         `uvm_fatal("TB_TOP",
