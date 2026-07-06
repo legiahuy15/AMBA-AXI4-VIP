@@ -11,6 +11,7 @@
 ../src/mst/axi4_master_driver.sv
 ../src/mst/axi4_master_monitor.sv
 ../src/mst/axi4_master_sequencer.sv
+../src/seq/axi4_addr_data_integrity_seq.sv
 ../src/seq/axi4_all_burst_type_seq.sv
 ../src/seq/axi4_back_to_back_seq.sv
 ../src/seq/axi4_base_sequence.sv
@@ -38,8 +39,10 @@
 ../src/slv/axi4_slave_sequencer.sv
 ../src/sva/axi4_sva.sv
 ../src/tb_top.sv
+../src/test/axi4_addr_integrity_test.sv
 ../src/test/axi4_all_burst_type_test.sv
 ../src/test/axi4_back_to_back_test.sv
+../src/test/axi4_backpressure_test.sv
 ../src/test/axi4_base_test.sv
 ../src/test/axi4_burst_sweep_test.sv
 ../src/test/axi4_cache_prot_test.sv
