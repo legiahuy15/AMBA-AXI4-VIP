@@ -1,5 +1,5 @@
 QuestaSim-64 vlog 10.6b Compiler 2017.05 May 25 2017
-Start time: 12:22:54 on Jul 06,2026
+Start time: 12:55:01 on Jul 06,2026
 vlog -sv -work work -timescale 1ns/1ps "+incdir+../src" -l ./report/logs/compile.log -cover sbcet ../src/axi4_if.sv ../src/axi4_pkg.sv ../src/axi4_test_pkg.sv ../src/sva/axi4_sva.sv ../src/tb_top.sv 
 -- Compiling interface axi4_if
 -- Compiling package axi4_pkg
@@ -10,8 +10,10 @@ vlog -sv -work work -timescale 1ns/1ps "+incdir+../src" -l ./report/logs/compile
 -- Compiling module axi4_sva
 -- Compiling module tb_top
 -- Importing package axi4_test_pkg
+** Warning: ../src/tb_top.sv(157): (vlog-2244) Variable 'timeout_ns' is implicitly static. You must either explicitly declare it as static or automatic
+or remove the initialization in the declaration of variable.
 
 Top level modules:
 	tb_top
-End time: 12:22:55 on Jul 06,2026, Elapsed time: 0:00:01
-Errors: 0, Warnings: 0
+End time: 12:55:02 on Jul 06,2026, Elapsed time: 0:00:01
+Errors: 0, Warnings: 1
