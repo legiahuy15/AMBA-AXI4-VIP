@@ -57,6 +57,8 @@ package axi4_pkg;
     `include "seq/axi4_out_of_order_seq.sv"
     `include "seq/axi4_exclusive_seq.sv"
     `include "seq/axi4_illegal_exclusive_seq.sv"
+    `include "seq/axi4_exclusive_fail_seq.sv"
+    `include "seq/axi4_reset_traffic_seq.sv"
     `include "seq/axi4_unaligned_seq.sv"
     `include "seq/axi4_cache_prot_seq.sv"
     `include "seq/axi4_strobe_pattern_seq.sv"

@@ -50,6 +50,25 @@ module tb_top;
     end
 
     // =========================================================================
+    // Mid-simulation reset support
+    //   A test can request an EXTRA reset pulse (to verify reset-recovery of the
+    //   drivers and monitors) by triggering the global UVM event
+    //   "axi4_reset_req". rst_n is driven low for a few cycles, then released.
+    //   This is independent of the power-on reset above.
+    // =========================================================================
+    initial begin
+        uvm_event reset_ev = uvm_event_pool::get_global("axi4_reset_req");
+        forever begin
+            reset_ev.wait_trigger();
+            `uvm_info("TB_TOP", "Mid-sim reset requested — asserting rst_n", UVM_LOW)
+            rst_n = 1'b0;
+            repeat (8) @(posedge clk);
+            rst_n = 1'b1;
+            `uvm_info("TB_TOP", "Mid-sim reset pulse complete — rst_n deasserted", UVM_LOW)
+        end
+    end
+
+    // =========================================================================
     // Interface Instance
     // =========================================================================
     axi4_if #(
