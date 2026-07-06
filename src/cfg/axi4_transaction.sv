@@ -112,6 +112,20 @@ class axi4_transaction extends uvm_sequence_item;
         (burst == AXI4_BURST_INCR) -> len <= 255;
     }
 
+    // Exclusive access rules (AXI4 spec A7.2): a legal exclusive transaction must
+    //   - span a power-of-two number of bytes (2^size is pow2, so len+1 must be pow2),
+    //   - not exceed 128 bytes in total,
+    //   - use at most 16 beats,
+    //   - start at an address aligned to the total byte count.
+    // Constraining the master guarantees it never issues an illegal exclusive access.
+    constraint c_exclusive_legal {
+        (lock == AXI4_LOCK_EXCLUSIVE) -> {
+            (len + 1) inside {1, 2, 4, 8, 16};          // pow2 beats, <= 16 beats
+            ((1 << size) * (len + 1)) <= 128;           // total bytes <= 128
+            (addr % ((1 << size) * (len + 1))) == 0;    // aligned to total bytes
+        }
+    }
+
     // Default response: OKAY for write resp (slave will override as needed)
     constraint c_resp_default {
         soft resp == AXI4_RESP_OKAY;

@@ -143,13 +143,23 @@ module tb_top;
         end
     end
 
-/*
-    // Safety simulation timeout watchdog (10 milliseconds backup)
+    // =========================================================================
+    // Safety simulation watchdog
+    //   Prevents a regression from hanging forever if a test deadlocks (e.g. a
+    //   lost handshake or a dropped response). Fires a UVM_FATAL, which prints
+    //   the report summary and ends the run cleanly — so the regression harness
+    //   detects the failure via its UVM_FATAL grep.
+    //   The timeout (in ns) is overridable from the command line:
+    //       make run PLUSARGS=+TIMEOUT_NS=2000000
+    //   With the 1ns timescale, the default 10_000_000 ns = 10 ms of sim time.
+    // =========================================================================
     initial begin
-        #10ms;
-        `uvm_error("TB_TOP", "Simulation safety timeout reached! Hanging prevention triggered.")
-        $finish;
+        longint unsigned timeout_ns = 10_000_000;  // 10 ms default backup
+        void'($value$plusargs("TIMEOUT_NS=%d", timeout_ns));
+        #(timeout_ns);
+        `uvm_fatal("TB_TOP",
+                   $sformatf("Simulation safety timeout reached (%0d ns)! Possible hang detected.",
+                             timeout_ns))
     end
-*/
 
 endmodule : tb_top

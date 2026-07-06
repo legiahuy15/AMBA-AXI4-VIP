@@ -24,8 +24,17 @@ class axi4_slave_driver extends uvm_driver #(axi4_transaction);
     bit [7:0] mem [bit [AXI4_ADDR_WIDTH-1:0]];
 
     // Exclusive reservation table per AXI4 spec (Key: transaction ID)
-    protected bit [AXI4_ADDR_WIDTH-1:0] excl_table [bit [AXI4_ID_WIDTH-1:0]];
-    protected bit                       excl_valid [bit [AXI4_ID_WIDTH-1:0]];
+    //   An exclusive read records the monitored region (addr/size/len). The
+    //   paired exclusive write only succeeds (EXOKAY) if it targets the SAME
+    //   ID, address, size, and length, and the region has not been written to
+    //   in the meantime.
+    typedef struct {
+        bit                       valid;
+        bit [AXI4_ADDR_WIDTH-1:0] addr;
+        bit [2:0]                 size;
+        bit [7:0]                 len;
+    } excl_res_t;
+    protected excl_res_t excl_res [bit [AXI4_ID_WIDTH-1:0]];
 
     // Internal FIFO structs and queues to support outstanding transactions
     typedef struct {
@@ -154,6 +163,7 @@ class axi4_slave_driver extends uvm_driver #(axi4_transaction);
         b_fifo.delete();
         ar_fifo.delete();
         id_mutex.delete();
+        excl_res.delete();      // drop all exclusive reservations on reset
     endtask : reset_signals
 
     // =========================================================================
@@ -261,20 +271,28 @@ class axi4_slave_driver extends uvm_driver #(axi4_transaction);
                 wr_resp = AXI4_RESP_SLVERR;
                 do_write = 0;
             end else if (aw.lock == AXI4_LOCK_EXCLUSIVE) begin
-                if (excl_valid.exists(aw.id) && excl_valid[aw.id] && excl_table[aw.id] == aw.addr) begin
-                    wr_resp = AXI4_RESP_EXOKAY;
-                    excl_valid[aw.id] = 0;
-                end else begin
+                // Exclusive write: must be a legal exclusive access AND match an
+                // outstanding reservation (same ID, addr, size, len) that is
+                // still valid. Otherwise the exclusive access fails (OKAY, no write).
+                if (!is_legal_exclusive(aw.addr, aw.size, aw.len)) begin
+                    `uvm_error(get_type_name(),
+                               $sformatf("Illegal exclusive WRITE: ID=0x%0h ADDR=0x%08h SIZE=%0d LEN=%0d violates AXI4 exclusive constraints (pow2 bytes<=128, len<=16, aligned)",
+                                         aw.id, aw.addr, aw.size, aw.len))
                     wr_resp = AXI4_RESP_OKAY;
                     do_write = 0;
+                end else if (excl_res.exists(aw.id) && excl_res[aw.id].valid &&
+                             excl_res[aw.id].addr == aw.addr &&
+                             excl_res[aw.id].size == aw.size &&
+                             excl_res[aw.id].len  == aw.len) begin
+                    wr_resp = AXI4_RESP_EXOKAY;
+                    excl_res[aw.id].valid = 0;   // reservation consumed
+                    // do_write stays 1 → the store is committed below
+                end else begin
+                    wr_resp = AXI4_RESP_OKAY;
+                    do_write = 0;                // exclusive write failed
                 end
             end else begin
                 wr_resp = AXI4_RESP_OKAY;
-                foreach (excl_table[id]) begin
-                    if (excl_valid[id] && excl_table[id] == aw.addr) begin
-                        excl_valid[id] = 0;
-                    end
-                end
             end
 
             if (do_write) begin
@@ -284,8 +302,12 @@ class axi4_slave_driver extends uvm_driver #(axi4_transaction);
                     beat_addr = calc_beat_addr(aw.addr, beat, aw.size, aw.burst, aw.len);
                     aligned_beat_addr = (beat_addr / AXI4_STRB_WIDTH) * AXI4_STRB_WIDTH;
                     for (int b = 0; b < AXI4_STRB_WIDTH; b++) begin
-                        if (w.strb_q[beat][b])
+                        if (w.strb_q[beat][b]) begin
                             mem[aligned_beat_addr + b] = w.data_q[beat][b*8 +: 8];
+                            // Any committed store cancels reservations covering
+                            // this byte (including those held by other IDs).
+                            invalidate_reservations_at(aligned_beat_addr + b);
+                        end
                     end
                 end
             end
@@ -398,9 +420,18 @@ class axi4_slave_driver extends uvm_driver #(axi4_transaction);
         end else if (ar.addr >= 32'hE000_0000) begin
             rd_resp = AXI4_RESP_SLVERR;
         end else if (ar.lock == AXI4_LOCK_EXCLUSIVE) begin
-            rd_resp = AXI4_RESP_EXOKAY;
-            excl_table[ar.id] = ar.addr;
-            excl_valid[ar.id] = 1;
+            // Exclusive read: record the reservation only if the access is a
+            // legal exclusive access. An illegal one is a master protocol
+            // violation — flag it and respond OKAY (no reservation set).
+            if (!is_legal_exclusive(ar.addr, ar.size, ar.len)) begin
+                `uvm_error(get_type_name(),
+                           $sformatf("Illegal exclusive READ: ID=0x%0h ADDR=0x%08h SIZE=%0d LEN=%0d violates AXI4 exclusive constraints (pow2 bytes<=128, len<=16, aligned)",
+                                     ar.id, ar.addr, ar.size, ar.len))
+                rd_resp = AXI4_RESP_OKAY;
+            end else begin
+                rd_resp = AXI4_RESP_EXOKAY;
+                excl_res[ar.id] = '{valid:1'b1, addr:ar.addr, size:ar.size, len:ar.len};
+            end
         end else begin
             rd_resp = AXI4_RESP_OKAY;
         end
@@ -463,6 +494,48 @@ class axi4_slave_driver extends uvm_driver #(axi4_transaction);
                   $sformatf("Read complete: ID=0x%0h ADDR=0x%08h RESP=%s  %0d beats sent",
                             ar.id, ar.addr, rd_resp.name(), ar.len + 1), UVM_MEDIUM)
     endtask : drive_r_single
+
+    // =========================================================================
+    // is_legal_exclusive — validate exclusive access constraints (AXI4 spec A7.2)
+    //   An exclusive access is only legal when ALL of the following hold:
+    //     1. Burst length <= 16 beats.
+    //     2. Total bytes (bytes/beat * beats) <= 128.
+    //     3. Total bytes is a power of two.
+    //     4. Start address is aligned to the total number of bytes.
+    //   A master that violates these is issuing an illegal exclusive access.
+    // =========================================================================
+    function bit is_legal_exclusive(bit [AXI4_ADDR_WIDTH-1:0] addr,
+                                    bit [2:0]                 size,
+                                    bit [7:0]                 len);
+        int unsigned num_bytes   = 1 << size;
+        int unsigned burst_len   = len + 1;
+        int unsigned total_bytes = num_bytes * burst_len;
+
+        if (burst_len > 16)                              return 1'b0; // rule 1
+        if (total_bytes > 128)                           return 1'b0; // rule 2
+        if ((total_bytes & (total_bytes - 1)) != 0)      return 1'b0; // rule 3 (pow2)
+        if ((addr % total_bytes) != 0)                   return 1'b0; // rule 4 (align)
+        return 1'b1;
+    endfunction : is_legal_exclusive
+
+    // =========================================================================
+    // invalidate_reservations_at — clear any exclusive reservation whose
+    //   monitored region contains byte_addr. Called for every byte actually
+    //   committed to memory (any write, exclusive or normal), so a store that
+    //   touches a monitored location cancels the pending exclusive access as
+    //   required by the AXI4 spec.
+    // =========================================================================
+    function void invalidate_reservations_at(bit [AXI4_ADDR_WIDTH-1:0] byte_addr);
+        foreach (excl_res[id]) begin
+            if (excl_res[id].valid) begin
+                int unsigned res_bytes;
+                res_bytes = (1 << excl_res[id].size) * (excl_res[id].len + 1);
+                if (byte_addr >= excl_res[id].addr &&
+                    byte_addr <  (excl_res[id].addr + res_bytes))
+                    excl_res[id].valid = 1'b0;
+            end
+        end
+    endfunction : invalidate_reservations_at
 
     // =========================================================================
     // calc_beat_addr — Calculate address for each beat in a burst

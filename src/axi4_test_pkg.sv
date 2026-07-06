@@ -24,6 +24,7 @@ package axi4_test_pkg;
     `include "test/axi4_outstanding_test.sv"
     `include "test/axi4_out_of_order_test.sv"
     `include "test/axi4_exclusive_test.sv"
+    `include "test/axi4_illegal_exclusive_test.sv"
     `include "test/axi4_unaligned_test.sv"
     `include "test/axi4_cache_prot_test.sv"
     `include "test/axi4_strobe_test.sv"
