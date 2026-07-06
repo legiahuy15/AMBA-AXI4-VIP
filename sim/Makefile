@@ -43,7 +43,11 @@ PLUSARGS      += +DUMP_VCD
 TEST_LIST     ?= axi4_sanity_test axi4_random_test axi4_outstanding_test \
                  axi4_out_of_order_test \
                  axi4_exclusive_test axi4_unaligned_test axi4_cache_prot_test \
-                 axi4_strobe_test axi4_burst_sweep_test
+                 axi4_strobe_test axi4_burst_sweep_test \
+                 axi4_wr_order_demo_test axi4_narrow_burst_test \
+                 axi4_error_response_test axi4_all_burst_type_test \
+                 axi4_back_to_back_test \
+                 axi4_data_integrity_test
 
 # ==============================================================================
 # 3. Simulator Flags & Conditional Options
