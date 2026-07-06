@@ -55,6 +55,10 @@ class axi4_exclusive_fail_seq extends axi4_base_sequence;
             burst == AXI4_BURST_INCR;
             size  == AXI4_SIZE_4B;
             len   == 0;
+            // Full byte-enables: an intervening store must actually WRITE the
+            // monitored bytes so it deterministically clears the reservation.
+            // (With random strobes, a masked write may leave it valid.)
+            foreach (strb[i]) strb[i] == '1;
         }) `uvm_fatal(get_type_name(), "Randomization failed in exclusive-fail seq")
         finish_item(tr);
         wait(tr.done_event.ev.triggered);
