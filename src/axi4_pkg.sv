@@ -69,6 +69,7 @@ package axi4_pkg;
     `include "seq/axi4_all_burst_type_seq.sv"
     `include "seq/axi4_back_to_back_seq.sv"
     `include "seq/axi4_data_integrity_seq.sv"
+    `include "seq/axi4_addr_data_integrity_seq.sv"
 
     // =========================================================================
     // Environment-level Components  (src/env/)

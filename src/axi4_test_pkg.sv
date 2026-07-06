@@ -37,6 +37,8 @@ package axi4_test_pkg;
     `include "test/axi4_all_burst_type_test.sv"
     `include "test/axi4_back_to_back_test.sv"
     `include "test/axi4_data_integrity_test.sv"
+    `include "test/axi4_addr_integrity_test.sv"
+    `include "test/axi4_backpressure_test.sv"
 
 endpackage : axi4_test_pkg
 
