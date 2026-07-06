@@ -118,9 +118,7 @@ run: optimize
 		+UVM_TESTNAME=$(TESTNAME) \
 		+UVM_VERBOSITY=$(UVM_VERBOSITY) \
 		$(PLUSARGS) \
-		-do "if {[string equal [design visibility] \"port\"] || [string equal [design visibility] \"none\"]} { \
-		       coverage save -onexit $(COV_DIR)/$(TESTNAME)_seed_$(GEN_SEED).ucdb; \
-		     }; run -all; quit -f" \
+		-do "coverage save -onexit $(COV_DIR)/$(TESTNAME)_seed_$(GEN_SEED).ucdb; run -all; quit -f" \
 		opt_tb_top
 
 # Launch Questa GUI with full AXI4 waveform view

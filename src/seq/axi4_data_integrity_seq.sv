@@ -60,6 +60,7 @@ class axi4_data_integrity_seq extends axi4_base_sequence;
             size  == AXI4_SIZE_4B;
             burst == AXI4_BURST_INCR;
             id    == 4'hC;
+            lock  == AXI4_LOCK_NORMAL;        // Normal write so ref-mem commits it
             // Fixed recognisable data pattern
             data[0] == 32'hDEAD_BEEF;
             data[1] == 32'hCAFE_BABE;
@@ -87,6 +88,7 @@ class axi4_data_integrity_seq extends axi4_base_sequence;
             size  == AXI4_SIZE_4B;
             burst == AXI4_BURST_INCR;
             id    == 4'hC;
+            lock  == AXI4_LOCK_NORMAL;        // Normal read-back
         }) `uvm_fatal(get_type_name(), "Randomization failed for integrity read #1")
         finish_item(rd_tr);
         wait(rd_tr.done_event.ev.triggered);
@@ -110,7 +112,7 @@ class axi4_data_integrity_seq extends axi4_base_sequence;
             end
             if (pass)
                 `uvm_info(get_type_name(),
-                          "Pair #1 data integrity PASSED — all 4 beats match",
+                          "Pair #1 data integrity PASSED -- all 4 beats match",
                           UVM_LOW)
         end
 
@@ -131,6 +133,7 @@ class axi4_data_integrity_seq extends axi4_base_sequence;
             size  == AXI4_SIZE_4B;
             burst == AXI4_BURST_INCR;
             id    == 4'hD;
+            lock  == AXI4_LOCK_NORMAL;        // Normal write so ref-mem commits it
             data[0] == 32'h5555_AAAA;
             foreach (strb[i]) strb[i] == 4'b1111;
         }) `uvm_fatal(get_type_name(), "Randomization failed for integrity write #2")
@@ -152,6 +155,7 @@ class axi4_data_integrity_seq extends axi4_base_sequence;
             size  == AXI4_SIZE_4B;
             burst == AXI4_BURST_INCR;
             id    == 4'hD;
+            lock  == AXI4_LOCK_NORMAL;        // Normal read-back
         }) `uvm_fatal(get_type_name(), "Randomization failed for integrity read #2")
         finish_item(rd_tr);
         wait(rd_tr.done_event.ev.triggered);
@@ -164,7 +168,7 @@ class axi4_data_integrity_seq extends axi4_base_sequence;
         // In-sequence sanity check
         if (wr_tr.data[0] === rd_tr.data[0])
             `uvm_info(get_type_name(),
-                      "Pair #2 data integrity PASSED — single beat matches",
+                      "Pair #2 data integrity PASSED -- single beat matches",
                       UVM_LOW)
         else
             `uvm_error(get_type_name(),
