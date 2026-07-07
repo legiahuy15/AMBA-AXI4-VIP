@@ -342,19 +342,25 @@ module axi4_sva #(
     int unsigned ar_len_fifo[logic [ID_WIDTH-1:0]][$];
     int unsigned r_beat_cnt[logic [ID_WIDTH-1:0]];
 
-    // Track AW handshakes and W burst completions
+    // Track AW/W handshakes, WLAST positioning, and W-before-AW matching in a
+    // SINGLE always block. Merging what used to be two separate always blocks
+    // removes the cross-always race on aw_len_fifo/w_len_fifo when an AW and a
+    // W handshake land on the same clock edge: the updates now happen in one
+    // deterministic program order (AW capture first, then W check).
+    // (w_beat_cnt lives in its own nonblocking register below, so both sections
+    //  here read its pre-edge value regardless of block scheduling order.)
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             aw_len_fifo.delete();
             w_len_fifo.delete();
         end else begin
-            // 1. Capture AWLEN when AW handshakes
+            // Capture AWLEN when AW handshakes
             if (AWVALID && AWREADY) begin
                 if (w_len_fifo.size() > 0) begin
                     int unsigned actual_w_len;
                     actual_w_len = w_len_fifo.pop_front();
                     WLAST_CORRECT_W_BEFORE_AW : assert (AWLEN == actual_w_len)
-                        else $error("[SVA] WLAST asserted on beat %0d but AWLEN is %0d (W before AW)", 
+                        else $error("[SVA] WLAST asserted on beat %0d but AWLEN is %0d (W before AW)",
                                     actual_w_len, AWLEN);
                 end else begin
                     // W started before AW and still in progress (no WLAST yet):
@@ -369,26 +375,10 @@ module axi4_sva #(
                     aw_len_fifo.push_back(AWLEN);
                 end
             end
-        end
-    end
 
-    // W beat counter - reset on WLAST handshake
-    always @(posedge clk or negedge rst_n) begin
-        if (!rst_n) begin
-            w_beat_cnt <= 0;
-        end else if (WVALID && WREADY) begin
-            if (WLAST)
-                w_beat_cnt <= 0;
-            else
-                w_beat_cnt <= w_beat_cnt + 1;
-        end
-    end
-
-    // Track W handshake checks
-    always @(posedge clk or negedge rst_n) begin
-        if (!rst_n) begin
-            // reset logic
-        end else begin
+            // Check WLAST positioning when W handshakes. Runs AFTER the AW
+            // capture above, so an AW that handshakes on this same clock edge
+            // is already reflected in aw_len_fifo here.
             if (WVALID && WREADY) begin
                 if (aw_len_fifo.size() > 0) begin
                     if (w_beat_cnt == aw_len_fifo[0]) begin
@@ -410,6 +400,20 @@ module axi4_sva #(
                     end
                 end
             end
+        end
+    end
+
+    // W beat counter - reset on WLAST handshake.
+    // Kept as a standalone nonblocking register so the merged block above always
+    // observes the pre-edge beat index (immune to always-block ordering).
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            w_beat_cnt <= 0;
+        end else if (WVALID && WREADY) begin
+            if (WLAST)
+                w_beat_cnt <= 0;
+            else
+                w_beat_cnt <= w_beat_cnt + 1;
         end
     end
 

@@ -7,20 +7,29 @@
 //
 //               The UVM master driver only ever produces legal traffic, so it
 //               can prove the check does not false-fire but CANNOT make it fire.
-//               This TB drives axi4_sva's ports directly to exercise both:
+//               This TB drives axi4_sva's ports directly to exercise:
 //
 //                 PHASE A (legal)   : W starts before AW and is still in
 //                                     progress when AW arrives (Case B), but the
 //                                     final WLAST lands exactly on AWLEN.
 //                                     Expect NO [SVA] error.
 //
-//                 PHASE B (illegal) : W accepts MORE beats than AWLEN+1 without
+//                 PHASE B (legal)   : pipelined - burst 1's final WLAST and
+//                                     burst 2's AW handshake occur on the SAME
+//                                     clock edge (AWLEN2 < burst 1's length).
+//                                     Locks in the AW-before-W ordering of the
+//                                     merged tracking block; the old two-block
+//                                     version could false-fire here.
+//                                     Expect NO [SVA] error.
+//
+//                 PHASE C (illegal) : W accepts MORE beats than AWLEN+1 without
 //                                     WLAST before AW arrives (WLAST missing/late).
 //                                     Expect exactly ONE [SVA] error:
 //                                     "WLAST missing/late, W before AW".
 //
-//               Run (QuestaSim):
-//                 vlog -sv +incdir+../src ../src/sva/axi4_sva.sv tb_sva_wlast_before_aw.sv
+//               Run from sim/ (QuestaSim):
+//                 vlog -sv +incdir+../src ../src/sva/axi4_sva.sv \
+//                      ../src/sva/tb_sva_wlast_before_aw.sv
 //                 vsim -c tb_sva_wlast_before_aw -do "run -all; quit -f"
 //               or:  make sva_unit
 //==============================================================================
@@ -110,6 +119,20 @@ module tb_sva_wlast_before_aw;
         AWVALID = 1'b0; AWREADY = 1'b0;
     endtask
 
+    // One W beat AND one AW handshake on the SAME clock edge (pipelined,
+    // same-cycle). Stresses the AW-vs-W ordering inside the merged block.
+    task automatic w_and_aw(input logic w_last, input logic [7:0] aw_len);
+        @(negedge clk);
+        WVALID  = 1'b1; WREADY = 1'b1; WLAST = w_last;
+        WDATA   = $urandom; WSTRB = '1;
+        AWVALID = 1'b1; AWREADY = 1'b1;
+        AWLEN   = aw_len; AWSIZE = 3'b010; AWBURST = 2'b01;
+        AWID    = '0; AWADDR = 32'h2000;
+        @(negedge clk);
+        WVALID  = 1'b0; WREADY = 1'b0; WLAST = 1'b0;
+        AWVALID = 1'b0; AWREADY = 1'b0;
+    endtask
+
     task automatic idle(input int n);
         repeat (n) @(negedge clk);
     endtask
@@ -149,13 +172,35 @@ module tb_sva_wlast_before_aw;
         idle(4);
 
         // ------------------------------------------------------------------
-        // PHASE B - illegal (WLAST missing/late before AW)
+        // PHASE B - legal pipelined: AW and WLAST on the SAME clock edge
+        //   Burst 1 (AWLEN=3) is in flight; its final beat (WLAST) handshakes
+        //   on the exact same cycle as burst 2's AW (AWLEN=1 < 3). This is the
+        //   race the merged block fixes: a "W before AW" order would pop burst 1
+        //   off aw_len_fifo, then run the retroactive check for burst 2 against
+        //   burst 1's stale w_beat_cnt(3) -> AWLEN(1) >= 3 FALSE -> false
+        //   positive. The merged "AW first" order leaves burst 1 on the FIFO so
+        //   the retroactive guard (aw_len_fifo empty) is skipped correctly.
+        //   Expect: NO [SVA] error.
+        // ------------------------------------------------------------------
+        $display("\n[TB] ===== PHASE B: legal pipelined AW==WLAST same edge =====");
+        $display("[TB] Expect NO [SVA] error in this phase.");
+        aw_hs(8'd3);               // burst1 AW: AWLEN=3       (aw_len_fifo=[3])
+        w_beat(1'b0);              // burst1 beat 0  (w_beat_cnt -> 1)
+        w_beat(1'b0);              // burst1 beat 1  (w_beat_cnt -> 2)
+        w_beat(1'b0);              // burst1 beat 2  (w_beat_cnt -> 3)
+        w_and_aw(1'b1, 8'd1);      // burst1 WLAST(beat3) + burst2 AW(AWLEN=1), SAME edge
+        w_beat(1'b0);              // burst2 beat 0  (w_beat_cnt -> 1)
+        w_beat(1'b1);              // burst2 beat 1, WLAST on AWLEN=1 -> OK, done
+        idle(4);
+
+        // ------------------------------------------------------------------
+        // PHASE C - illegal (WLAST missing/late before AW)
         //   Master streams 5 W beats without WLAST, THEN AW arrives with AWLEN=2
         //   (only 3 beats allowed). Beat index 2 should have carried WLAST, so
         //   the retroactive check AWLEN(2) >= w_beat_cnt(5) FAILS.
         //   Expect: exactly ONE [SVA] "WLAST missing/late, W before AW" error.
         // ------------------------------------------------------------------
-        $display("\n[TB] ===== PHASE B: illegal WLAST missing before AW =====");
+        $display("\n[TB] ===== PHASE C: illegal WLAST missing before AW =====");
         $display("[TB] Expect exactly ONE [SVA] WLAST_MISSING_W_BEFORE_AW error.");
         w_beat(1'b0);              // beat 0  (w_beat_cnt -> 1)
         w_beat(1'b0);              // beat 1  (w_beat_cnt -> 2)
@@ -166,8 +211,8 @@ module tb_sva_wlast_before_aw;
         idle(6);
 
         $display("\n[TB] ===== DONE =====");
-        $display("[TB] PASS criteria: log shows 0 [SVA] errors in PHASE A and");
-        $display("[TB]                exactly 1 [SVA] error in PHASE B.");
+        $display("[TB] PASS criteria: 0 [SVA] errors in PHASE A and PHASE B,");
+        $display("[TB]                exactly 1 [SVA] error in PHASE C.");
         $finish;
     end
 

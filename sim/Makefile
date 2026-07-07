@@ -166,9 +166,9 @@ sva_unit:
 	@vlib work
 	@vmap work work
 	vlog -sv -work work -timescale 1ns/1ps +incdir+$(SRC_DIR) \
-		$(SRC_DIR)/sva/axi4_sva.sv tb_sva_wlast_before_aw.sv \
+		$(SRC_DIR)/sva/axi4_sva.sv $(SRC_DIR)/sva/tb_sva_wlast_before_aw.sv \
 		-l $(LOG_DIR)/sva_unit_compile.log
-	@echo "[SVA-UNIT] Running (expect: 0 SVA errors in PHASE A, 1 in PHASE B)..."
+	@echo "[SVA-UNIT] Running (expect: 0 SVA errors in PHASE A/B, 1 in PHASE C)..."
 	vsim -c -work work tb_sva_wlast_before_aw \
 		-l $(LOG_DIR)/sva_unit_run.log \
 		-do "run -all; quit -f"

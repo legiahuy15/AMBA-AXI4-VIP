@@ -18,7 +18,7 @@
     parameter AXI4_LEN_WIDTH  = 8;                     // Burst length field (AXI4 = 8-bit)
 
     //-------------------------------------------------------------------------
-    // 2. Burst type (AXI4 spec)
+    // 2. Burst type
     //    Defines how the address is calculated for each transfer in a burst.
     //        FIXED - same address for every transfer  (e.g. FIFO access)
     //        INCR  - incrementing address             (most common)
@@ -32,7 +32,7 @@
     } axi4_burst_type_e;
 
     //-------------------------------------------------------------------------
-    // 3. Response type (AXI4 spec)
+    // 3. Response type
     //    Indicates the status of a read/write transaction.
     //        OKAY   - normal access success
     //        EXOKAY - exclusive access success
@@ -47,7 +47,7 @@
     } axi4_resp_e;
 
     //-------------------------------------------------------------------------
-    // 4. Burst size (AXI4 spec)
+    // 4. Burst size
     //      Number of bytes per transfer = 2^SIZE.
     //      Must not exceed the data bus width (DATA_WIDTH / 8 bytes).
     //-------------------------------------------------------------------------
@@ -63,7 +63,7 @@
     } axi4_size_e;
 
     //-------------------------------------------------------------------------
-    // 5. Lock type (AXI4 spec)
+    // 5. Lock type
     //        NORMAL    - normal access
     //        EXCLUSIVE - exclusive access (for atomic read-modify-write)
     //-------------------------------------------------------------------------
