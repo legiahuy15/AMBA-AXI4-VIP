@@ -1,5 +1,5 @@
 QuestaSim-64 vopt 10.6b Compiler 2017.05 May 25 2017
-Start time: 14:26:03 on Jul 06,2026
+Start time: 10:08:08 on Jul 07,2026
 vopt "+acc" -work work -l ./report/logs/optimize.log -cover sbcet tb_top -o opt_tb_top 
 
 Top level modules:
@@ -13,7 +13,12 @@ Analyzing design...
 -- Loading interface axi4_if
 -- Loading module axi4_sva
 -- Loading package mtiUvm.questa_uvm_pkg
-Incremental compilation check found no design-units have changed.
+Incremental compilation check found 4 design-units (out of 8) may be reused.
+Optimizing 4 design-units (inlining 0/3 module instances):
+-- Optimizing module axi4_sva(fast)
+-- Optimizing module tb_top(fast)
+-- Optimizing package axi4_pkg(fast)
+-- Optimizing package axi4_test_pkg(fast)
 Optimized design name is opt_tb_top
-End time: 14:26:03 on Jul 06,2026, Elapsed time: 0:00:00
+End time: 10:08:10 on Jul 07,2026, Elapsed time: 0:00:02
 Errors: 0, Warnings: 0
