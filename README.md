@@ -118,9 +118,9 @@ All tests extend `axi4_base_test`. The regression list is defined in `sim/Makefi
 The `sim/` directory provides a Makefile targeting Siemens QuestaSim/ModelSim. It requires a QuestaSim installation with a compiled UVM library.
 
 ```bash
-cd sim
+cd sim/
 
-make help                                   # list targets and variables
+make help                                    # list targets and variables
 make run                                     # default test (axi4_sanity_test), random seed
 make run TESTNAME=axi4_random_test SEED=42   # specific test and seed
 make gui TESTNAME=axi4_outstanding_test      # GUI with AXI4 waveform view
