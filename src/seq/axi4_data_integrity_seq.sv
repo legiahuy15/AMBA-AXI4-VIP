@@ -32,13 +32,13 @@ class axi4_data_integrity_seq extends axi4_base_sequence;
     endfunction : new
 
     // =========================================================================
-    // body — write known data, then read-back and compare on waveform
+    // body - write known data, then read-back and compare on waveform
     // =========================================================================
     virtual task body();
         axi4_transaction wr_tr, rd_tr;
 
         `uvm_info(get_type_name(),
-                  "Starting data integrity demo (write known data → read-back → compare on waveform)",
+                  "Starting data integrity demo (write known data -> read-back -> compare on waveform)",
                   UVM_MEDIUM)
 
         // =================================================================

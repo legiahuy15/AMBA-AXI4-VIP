@@ -25,7 +25,7 @@ class axi4_all_burst_type_seq extends axi4_base_sequence;
     endfunction : new
 
     // =========================================================================
-    // body — one write+read pair per burst type
+    // body - one write+read pair per burst type
     // =========================================================================
     virtual task body();
         axi4_transaction wr_tr, rd_tr;

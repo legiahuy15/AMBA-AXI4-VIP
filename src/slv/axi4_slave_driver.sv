@@ -6,8 +6,8 @@
 //               Listens on the bus for incoming master requests and generates
 //               responses automatically. Contains a built-in byte-addressable
 //               memory model for data storage and retrieval.
-//               Write flow : wait AW → collect W beats → store to mem → send B
-//               Read flow  : wait AR → read from mem → send R beats
+//               Write flow : wait AW -> collect W beats -> store to mem -> send B
+//               Read flow  : wait AR -> read from mem -> send R beats
 //               This file is `included inside axi4_pkg.sv.
 //==============================================================================
 
@@ -71,7 +71,7 @@ class axi4_slave_driver extends uvm_driver #(axi4_transaction);
     protected ar_info_t ar_fifo[$];
 
     // =========================================================================
-    // Configurable delays — set via config_db or directly for back-pressure
+    // Configurable delays - set via config_db or directly for back-pressure
     //   ready_delay : cycles before asserting xREADY (simulates slow slave)
     //   resp_delay  : cycles before driving B/R response
     //   When max = 0, no delay is inserted.
@@ -87,7 +87,7 @@ class axi4_slave_driver extends uvm_driver #(axi4_transaction);
     bit          r_reorder_enable  = 0;
     int unsigned r_outstanding_max = 4;
 
-    // R channel mutex — ensures only one thread drives R beats at a time
+    // R channel mutex - ensures only one thread drives R beats at a time
     // (AXI4: no read data interleaving within a burst)
     protected semaphore r_channel_mutex;
 
@@ -102,13 +102,13 @@ class axi4_slave_driver extends uvm_driver #(axi4_transaction);
     endfunction : new
 
     // =========================================================================
-    // Build phase — get virtual interface from config_db
+    // Build phase - get virtual interface from config_db
     // =========================================================================
     function void build_phase(uvm_phase phase);
         super.build_phase(phase);
         if (!uvm_config_db#(virtual axi4_if)::get(this, "", "vif", vif))
             `uvm_fatal(get_type_name(), "Virtual interface not found in config_db")
-        // Optional delay configuration — tests can set these via config_db
+        // Optional delay configuration - tests can set these via config_db
         void'(uvm_config_db#(int unsigned)::get(this, "", "ready_delay_min", ready_delay_min));
         void'(uvm_config_db#(int unsigned)::get(this, "", "ready_delay_max", ready_delay_max));
         void'(uvm_config_db#(int unsigned)::get(this, "", "resp_delay_min",  resp_delay_min));
@@ -121,7 +121,7 @@ class axi4_slave_driver extends uvm_driver #(axi4_transaction);
     endfunction : build_phase
 
     // =========================================================================
-    // Run phase — reactive slave: fork write & read handlers
+    // Run phase - reactive slave: fork write & read handlers
     // =========================================================================
     task run_phase(uvm_phase phase);
         // Outer loop: recover from reset at any time during operation
@@ -147,7 +147,7 @@ class axi4_slave_driver extends uvm_driver #(axi4_transaction);
     endtask : run_phase
 
     // =========================================================================
-    // Reset — deassert all slave-driven READY / VALID signals
+    // Reset - deassert all slave-driven READY / VALID signals
     // =========================================================================
     task reset_signals();
         @(vif.slave_cb);
@@ -173,7 +173,7 @@ class axi4_slave_driver extends uvm_driver #(axi4_transaction);
     endtask : reset_signals
 
     // =========================================================================
-    // Delay helpers — insert random back-pressure / response latency
+    // Delay helpers - insert random back-pressure / response latency
     // =========================================================================
     task rand_ready_delay();
         int unsigned delay;
@@ -192,7 +192,7 @@ class axi4_slave_driver extends uvm_driver #(axi4_transaction);
     endtask : rand_resp_delay
 
     // =========================================================================
-    // Handle Writes — forks collector tasks and executor tasks to handle
+    // Handle Writes - forks collector tasks and executor tasks to handle
     // pipelined/outstanding write requests.
     // =========================================================================
     task handle_writes();
@@ -292,7 +292,7 @@ class axi4_slave_driver extends uvm_driver #(axi4_transaction);
                              excl_res[aw.id].len  == aw.len) begin
                     wr_resp = AXI4_RESP_EXOKAY;
                     excl_res[aw.id].valid = 0;   // reservation consumed
-                    // do_write stays 1 → the store is committed below
+                    // do_write stays 1 -> the store is committed below
                 end else begin
                     wr_resp = AXI4_RESP_OKAY;
                     do_write = 0;                // exclusive write failed
@@ -350,7 +350,7 @@ class axi4_slave_driver extends uvm_driver #(axi4_transaction);
     endtask : drive_b
 
     // =========================================================================
-    // Handle Reads — forks collector and driver to support outstanding reads.
+    // Handle Reads - forks collector and driver to support outstanding reads.
     //   When r_reorder_enable is set, responses may arrive out-of-order
     //   across different IDs (but beats within a burst are always contiguous
     //   per AXI4 spec).
@@ -428,7 +428,7 @@ class axi4_slave_driver extends uvm_driver #(axi4_transaction);
         end else if (ar.lock == AXI4_LOCK_EXCLUSIVE) begin
             // Exclusive read: record the reservation only if the access is a
             // legal exclusive access. An illegal one is a master protocol
-            // violation — flag it and respond OKAY (no reservation set).
+            // violation - flag it and respond OKAY (no reservation set).
             if (!is_legal_exclusive(ar.addr, ar.size, ar.len)) begin
                 `uvm_error(get_type_name(),
                            $sformatf("Illegal exclusive READ: ID=0x%0h ADDR=0x%08h SIZE=%0d LEN=%0d violates AXI4 exclusive constraints (pow2 bytes<=128, len<=16, aligned)",
@@ -473,7 +473,7 @@ class axi4_slave_driver extends uvm_driver #(axi4_transaction);
             repeat (reorder_delay) @(vif.slave_cb);
         end
 
-        // Acquire R channel mutex — only one thread drives R beats at a time
+        // Acquire R channel mutex - only one thread drives R beats at a time
         // (AXI4 spec: beats within a burst must be contiguous, no interleaving)
         r_channel_mutex.get(1);
 
@@ -502,7 +502,7 @@ class axi4_slave_driver extends uvm_driver #(axi4_transaction);
     endtask : drive_r_single
 
     // =========================================================================
-    // is_legal_exclusive — validate exclusive access constraints (AXI4 spec A7.2)
+    // is_legal_exclusive - validate exclusive access constraints (AXI4 spec A7.2)
     //   An exclusive access is only legal when ALL of the following hold:
     //     1. Burst length <= 16 beats.
     //     2. Total bytes (bytes/beat * beats) <= 128.
@@ -525,7 +525,7 @@ class axi4_slave_driver extends uvm_driver #(axi4_transaction);
     endfunction : is_legal_exclusive
 
     // =========================================================================
-    // invalidate_reservations_at — clear any exclusive reservation whose
+    // invalidate_reservations_at - clear any exclusive reservation whose
     //   monitored region contains byte_addr. Called for every byte actually
     //   committed to memory (any write, exclusive or normal), so a store that
     //   touches a monitored location cancels the pending exclusive access as
@@ -544,7 +544,7 @@ class axi4_slave_driver extends uvm_driver #(axi4_transaction);
     endfunction : invalidate_reservations_at
 
     // =========================================================================
-    // calc_beat_addr — Calculate address for each beat in a burst
+    // calc_beat_addr - Calculate address for each beat in a burst
     //   Supports FIXED, INCR, and WRAP burst types per AXI4 spec.
     // =========================================================================
     function bit [AXI4_ADDR_WIDTH-1:0] calc_beat_addr(

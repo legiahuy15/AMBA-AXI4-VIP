@@ -82,7 +82,7 @@ class axi4_coverage extends uvm_subscriber #(axi4_transaction);
 
         cp_prot: coverpoint m_prot;         // auto-bins for all 8 values
 
-        // Key cross coverages — AXI4 protocol exploration
+        // Key cross coverages - AXI4 protocol exploration
         cx_dir_burst:  cross cp_dir, cp_burst;
         cx_dir_size:   cross cp_dir, cp_size;
         cx_dir_len:    cross cp_dir, cp_len;
@@ -173,7 +173,7 @@ class axi4_coverage extends uvm_subscriber #(axi4_transaction);
     endfunction : new
 
     // =========================================================================
-    // write() — called automatically by analysis_export for each transaction
+    // write() - called automatically by analysis_export for each transaction
     //   Copies scalar fields, then samples covergroups.
     //   Response and strobe covergroups are sampled per-beat where appropriate.
     // =========================================================================

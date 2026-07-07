@@ -43,7 +43,7 @@ class axi4_master_agent extends uvm_agent;
         // Config
         if (!uvm_config_db#(axi4_agent_config)::get(this, "", "cfg", cfg)) begin
             `uvm_info(get_type_name(),
-                      "No agent config found — using defaults (ACTIVE, coverage ON)",
+                      "No agent config found - using defaults (ACTIVE, coverage ON)",
                       UVM_MEDIUM)
             cfg = axi4_agent_config::type_id::create("cfg");
         end
@@ -66,15 +66,15 @@ class axi4_master_agent extends uvm_agent;
             uvm_config_db#(virtual axi4_if)::set(this, "drv", "vif", vif);
             drv = axi4_master_driver::type_id::create("drv", this);
             sqr = axi4_master_sequencer::type_id::create("sqr", this);
-            `uvm_info(get_type_name(), "ACTIVE mode — driver + sequencer created", UVM_MEDIUM)
+            `uvm_info(get_type_name(), "ACTIVE mode - driver + sequencer created", UVM_MEDIUM)
         end else begin
-            `uvm_info(get_type_name(), "PASSIVE mode — monitor only", UVM_MEDIUM)
+            `uvm_info(get_type_name(), "PASSIVE mode - monitor only", UVM_MEDIUM)
         end
     endfunction : build_phase
 
     // =========================================================================
     // Connect phase
-    //   Connect sequencer → driver (ACTIVE mode only)
+    //   Connect sequencer -> driver (ACTIVE mode only)
     // =========================================================================
     function void connect_phase(uvm_phase phase);
         super.connect_phase(phase);

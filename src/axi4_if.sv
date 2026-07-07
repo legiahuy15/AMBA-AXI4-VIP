@@ -26,7 +26,7 @@ interface axi4_if #(
     localparam STRB_WIDTH = DATA_WIDTH / 8;
 
     // ==========================================================================
-    // AW Channel — Write Address (Master → Slave)
+    // AW Channel - Write Address (Master -> Slave)
     // ==========================================================================
     logic [ID_WIDTH-1:0]    AWID;
     logic [ADDR_WIDTH-1:0]  AWADDR;
@@ -42,7 +42,7 @@ interface axi4_if #(
     logic                   AWREADY;
 
     // ==========================================================================
-    // W Channel — Write Data (Master → Slave)
+    // W Channel - Write Data (Master -> Slave)
     // ==========================================================================
     logic [DATA_WIDTH-1:0]  WDATA;
     logic [STRB_WIDTH-1:0]  WSTRB;     // 1 bit per byte lane
@@ -51,7 +51,7 @@ interface axi4_if #(
     logic                   WREADY;
 
     // ==========================================================================
-    // B Channel — Write Response (Slave → Master)
+    // B Channel - Write Response (Slave -> Master)
     // ==========================================================================
     logic [ID_WIDTH-1:0]    BID;
     logic [1:0]             BRESP;
@@ -59,7 +59,7 @@ interface axi4_if #(
     logic                   BREADY;
 
     // ==========================================================================
-    // AR Channel — Read Address (Master → Slave)
+    // AR Channel - Read Address (Master -> Slave)
     // ==========================================================================
     logic [ID_WIDTH-1:0]    ARID;
     logic [ADDR_WIDTH-1:0]  ARADDR;
@@ -75,7 +75,7 @@ interface axi4_if #(
     logic                   ARREADY;
 
     // ==========================================================================
-    // R Channel — Read Data (Slave → Master)
+    // R Channel - Read Data (Slave -> Master)
     // ==========================================================================
     logic [ID_WIDTH-1:0]    RID;
     logic [DATA_WIDTH-1:0]  RDATA;
@@ -86,8 +86,8 @@ interface axi4_if #(
 
     // ==========================================================================
     // Clocking Block: Master Driver
-    //   — Drives  : AW*, W*, BREADY, AR*, RREADY  (master-to-slave + ready)
-    //   — Samples : AWREADY, WREADY, B*, ARREADY, R* (slave-to-master + ready)
+    //   - Drives  : AW*, W*, BREADY, AR*, RREADY  (master-to-slave + ready)
+    //   - Samples : AWREADY, WREADY, B*, ARREADY, R* (slave-to-master + ready)
     // ==========================================================================
     clocking master_cb @(posedge clk);
         default input #1step output #1;
@@ -115,8 +115,8 @@ interface axi4_if #(
 
     // ==========================================================================
     // Clocking Block: Slave Driver
-    //   — Drives  : AWREADY, WREADY, B*, ARREADY, R*  (slave-to-master + ready)
-    //   — Samples : AW*, W*, BREADY, AR*, RREADY      (master-to-slave + ready)
+    //   - Drives  : AWREADY, WREADY, B*, ARREADY, R*  (slave-to-master + ready)
+    //   - Samples : AW*, W*, BREADY, AR*, RREADY      (master-to-slave + ready)
     // ==========================================================================
     clocking slave_cb @(posedge clk);
         default input #1step output #1;
@@ -144,7 +144,7 @@ interface axi4_if #(
 
     // ==========================================================================
     // Clocking Block: Monitor
-    //   — Samples all signals (passive observation only)
+    //   - Samples all signals (passive observation only)
     // ==========================================================================
     clocking monitor_cb @(posedge clk);
         default input #1step;

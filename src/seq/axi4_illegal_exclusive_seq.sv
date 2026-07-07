@@ -2,7 +2,7 @@
 // File        : axi4_illegal_exclusive_seq.sv
 // Project     : AXI4 VIP
 // Author      : Huy Le
-// Description : Negative sequence — issues ILLEGAL exclusive accesses to verify
+// Description : Negative sequence - issues ILLEGAL exclusive accesses to verify
 //               the slave flags them per AXI4 spec (A7.2).
 //
 //               A legal exclusive access must span a power-of-two number of
@@ -39,7 +39,7 @@ class axi4_illegal_exclusive_seq extends axi4_base_sequence;
     endfunction : new
 
     // =========================================================================
-    // send_illegal — drive one exclusive transaction with illegal parameters.
+    // send_illegal - drive one exclusive transaction with illegal parameters.
     //   c_exclusive_legal is disabled so the (otherwise blocked) illegal values
     //   can be built. All other constraints (data/strb sizing, size<=bus) stay
     //   active. INCR burst is used so no unrelated WRAP/FIXED SVA fires.
@@ -74,7 +74,7 @@ class axi4_illegal_exclusive_seq extends axi4_base_sequence;
     endtask : send_illegal
 
     // =========================================================================
-    // body — send each violation category as a read and as a write.
+    // body - send each violation category as a read and as a write.
     // =========================================================================
     virtual task body();
         `uvm_info(get_type_name(),

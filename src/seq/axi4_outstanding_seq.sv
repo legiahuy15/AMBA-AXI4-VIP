@@ -36,7 +36,7 @@ class axi4_outstanding_seq extends axi4_base_sequence;
     endfunction : new
 
     // =========================================================================
-    // body — generate write/read transactions concurrently with outstanding limit
+    // body - generate write/read transactions concurrently with outstanding limit
     //   The semaphore slot is only released after the driver signals
     //   done_event (B or R response received), ensuring that
     //   outstanding_depth truly reflects the number of in-flight

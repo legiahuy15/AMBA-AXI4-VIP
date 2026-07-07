@@ -34,7 +34,7 @@ class axi4_write_read_back_seq extends axi4_base_sequence;
     endfunction : new
 
     // =========================================================================
-    // body — write then read-back with matching parameters
+    // body - write then read-back with matching parameters
     // =========================================================================
     virtual task body();
         axi4_transaction wr_tr, rd_tr;
@@ -77,7 +77,7 @@ class axi4_write_read_back_seq extends axi4_base_sequence;
         wait(rd_tr.done_event.ev.triggered);
 
         `uvm_info(get_type_name(),
-                  $sformatf("Read-back phase: ADDR=0x%08h LEN=%0d — data integrity check via scoreboard",
+                  $sformatf("Read-back phase: ADDR=0x%08h LEN=%0d - data integrity check via scoreboard",
                             rd_tr.addr, rd_tr.len),
                   UVM_MEDIUM)
     endtask : body

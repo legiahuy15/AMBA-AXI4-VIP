@@ -6,14 +6,14 @@
 //               Exercises how an exclusive reservation is invalidated by an
 //               intervening store (AXI4 spec A7.2), which axi4_exclusive_seq
 //               does not cover. All accesses here are LEGAL exclusive accesses,
-//               so the slave raises no protocol error — the sequence simply
+//               so the slave raises no protocol error - the sequence simply
 //               checks the response (EXOKAY vs OKAY) is what the spec requires.
 //
 //               Cases:
-//                 A. Excl read → normal write SAME id/addr → excl write must FAIL (OKAY)
-//                 B. Excl read → normal write by OTHER id, same addr → excl write FAILS
-//                 C. Excl read → excl write uninterrupted → SUCCEEDS (EXOKAY)  [control]
-//                 D. Excl read → normal write to UNRELATED addr → excl write SUCCEEDS
+//                 A. Excl read -> normal write SAME id/addr -> excl write must FAIL (OKAY)
+//                 B. Excl read -> normal write by OTHER id, same addr -> excl write FAILS
+//                 C. Excl read -> excl write uninterrupted -> SUCCEEDS (EXOKAY)  [control]
+//                 D. Excl read -> normal write to UNRELATED addr -> excl write SUCCEEDS
 //                    (reservation is region-scoped, must survive an unrelated store)
 //
 //               `errors` counts unexpected responses (0 = all correct).
@@ -35,7 +35,7 @@ class axi4_exclusive_fail_seq extends axi4_base_sequence;
     endfunction : new
 
     // =========================================================================
-    // send_txn — issue one single-beat transaction and block until it completes.
+    // send_txn - issue one single-beat transaction and block until it completes.
     //   Uses SIZE_4B / LEN=0 / INCR so every exclusive access is legal.
     //   Returns the completed transaction (with resp/rresp populated).
     // =========================================================================
@@ -66,7 +66,7 @@ class axi4_exclusive_fail_seq extends axi4_base_sequence;
     endtask : send_txn
 
     // =========================================================================
-    // expect_resp — check an actual response against the AXI4-required value.
+    // expect_resp - check an actual response against the AXI4-required value.
     // =========================================================================
     function void expect_resp(axi4_resp_e actual, axi4_resp_e exp, string tag);
         if (actual != exp) begin

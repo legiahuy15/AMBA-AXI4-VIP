@@ -30,14 +30,14 @@ class axi4_out_of_order_test extends axi4_base_test;
     bit          r_reorder  = 1;
 
     // =========================================================================
-    // Build phase — push slave-driver config BEFORE env/agent/drv are built
+    // Build phase - push slave-driver config BEFORE env/agent/drv are built
     // =========================================================================
     function void build_phase(uvm_phase phase);
         // Allow command-line overrides (available at elaboration time)
         void'($value$plusargs("OUTSTANDING_DEPTH=%d", depth));
         void'($value$plusargs("R_REORDER_EN=%d", r_reorder));
 
-        // Push config BEFORE super.build_phase creates env → slave_agent → drv
+        // Push config BEFORE super.build_phase creates env -> slave_agent -> drv
         uvm_config_db#(bit)::set(this, "env.slave_agent.drv",
                                  "r_reorder_enable", r_reorder);
         uvm_config_db#(int unsigned)::set(this, "env.slave_agent.drv",
@@ -47,7 +47,7 @@ class axi4_out_of_order_test extends axi4_base_test;
     endfunction : build_phase
 
     // =========================================================================
-    // Run phase — execute out-of-order sequence
+    // Run phase - execute out-of-order sequence
     // =========================================================================
     task run_phase(uvm_phase phase);
         axi4_out_of_order_seq ooo_seq;
@@ -74,7 +74,7 @@ class axi4_out_of_order_test extends axi4_base_test;
         // Start sequence on master sequencer
         ooo_seq.start(env.master_agent.sqr);
 
-        // Drain time — wait for outstanding responses to complete
+        // Drain time - wait for outstanding responses to complete
         repeat (100) @(posedge env_cfg.master_vif.clk);
 
         `uvm_info(get_type_name(), "Out-of-Order test completed successfully", UVM_LOW)

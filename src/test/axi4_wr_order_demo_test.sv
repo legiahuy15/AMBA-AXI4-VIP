@@ -5,7 +5,7 @@
 // Description : Test for AXI4 write channel ordering demo.
 //               Runs the write ordering demo sequence to demonstrate
 //               PARALLEL, AW_BEFORE_W, and W_BEFORE_AW modes.
-//               Only 3 transactions — ideal for waveform capture.
+//               Only 3 transactions - ideal for waveform capture.
 //               This file is `included inside axi4_test_pkg.sv.
 //==============================================================================
 

@@ -4,7 +4,7 @@
 // Author      : Huy Le
 // Description : Narrow Burst Transfer Demo Sequence.
 //               Generates transactions where transfer size (AxSIZE) is smaller
-//               than the data bus width — known as "narrow transfers" in AXI4.
+//               than the data bus width - known as "narrow transfers" in AXI4.
 //               Only 4 transactions: 1B-write, 1B-read, 2B-write, 2B-read
 //               on a 32-bit (4B) bus.
 //               Ideal for waveform capture showing partial byte-lane usage.
@@ -26,7 +26,7 @@ class axi4_narrow_burst_seq extends axi4_base_sequence;
     endfunction : new
 
     // =========================================================================
-    // body — send narrow write/read pairs at 1B and 2B sizes
+    // body - send narrow write/read pairs at 1B and 2B sizes
     // =========================================================================
     virtual task body();
         axi4_transaction tr;

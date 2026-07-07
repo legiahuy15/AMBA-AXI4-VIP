@@ -7,7 +7,7 @@
 //               bursts are in flight, then verifies the master/slave drivers
 //               recover cleanly:
 //                 - the simulation does not hang (watchdog would otherwise fire),
-//                 - a fresh write→read-back after reset returns correct data.
+//                 - a fresh write->read-back after reset returns correct data.
 //
 //               The scoreboard is disabled for this test because a mid-burst
 //               reset intentionally abandons partial transactions (which would
@@ -30,7 +30,7 @@ class axi4_reset_mid_burst_test extends axi4_base_test;
 
     function void build_phase(uvm_phase phase);
         super.build_phase(phase);
-        // Mid-burst reset leaves partial transactions → disable the scoreboard to
+        // Mid-burst reset leaves partial transactions -> disable the scoreboard to
         // avoid unmatched-warning noise. Recovery is checked functionally below.
         env_cfg.has_scoreboard = 0;
     endfunction : build_phase
@@ -59,7 +59,7 @@ class axi4_reset_mid_burst_test extends axi4_base_test;
         wait (vif.rst_n == 1'b0);
         `uvm_info(get_type_name(), "rst_n asserted (mid-burst)", UVM_MEDIUM)
         wait (vif.rst_n == 1'b1);
-        `uvm_info(get_type_name(), "rst_n deasserted — verifying recovery", UVM_MEDIUM)
+        `uvm_info(get_type_name(), "rst_n deasserted - verifying recovery", UVM_MEDIUM)
 
         // Kill any stuck pre-reset traffic and clear the sequencer state
         disable traffic_blk;
@@ -67,15 +67,15 @@ class axi4_reset_mid_burst_test extends axi4_base_test;
 
         repeat (10) @(posedge vif.clk);   // let drivers re-initialise
 
-        // ---- Phase 3: recovery proof — self-checking write→read-back ----
-        // If the driver failed to recover, this hangs (watchdog fires → fail).
+        // ---- Phase 3: recovery proof - self-checking write->read-back ----
+        // If the driver failed to recover, this hangs (watchdog fires -> fail).
         // If read-back data is wrong, the sequence raises UVM_ERROR.
         recover_seq = axi4_data_integrity_seq::type_id::create("recover_seq");
         recover_seq.start(env.master_agent.sqr);
 
         repeat (50) @(posedge vif.clk);
         `uvm_info(get_type_name(),
-                  "Recovery verified — driver processed clean transactions after mid-burst reset",
+                  "Recovery verified - driver processed clean transactions after mid-burst reset",
                   UVM_LOW)
 
         phase.drop_objection(this, "reset_mid_burst: complete");

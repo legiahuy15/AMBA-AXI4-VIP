@@ -5,7 +5,7 @@
 // Description : Test for AXI4 error response handling.
 //               Runs the error response sequence to demonstrate OKAY,
 //               SLVERR, and DECERR responses on B and R channels.
-//               Only 6 transactions — ideal for waveform capture.
+//               Only 6 transactions - ideal for waveform capture.
 //               This file is `included inside axi4_test_pkg.sv.
 //==============================================================================
 
@@ -21,7 +21,7 @@ class axi4_error_response_test extends axi4_base_test;
     endfunction : new
 
     // =========================================================================
-    // Build phase — disable scoreboard data-mismatch checking for error regions
+    // Build phase - disable scoreboard data-mismatch checking for error regions
     //   SLVERR/DECERR regions don't store data, so scoreboard would report
     //   mismatches. We keep the scoreboard ON to demonstrate response checking,
     //   but the scoreboard already handles error-region exclusion.

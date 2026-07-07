@@ -4,7 +4,7 @@
 // Author      : Huy Le
 // Description : Base UVM test for AXI4 VIP.
 //               Sets up the environment with a shared interface (passthrough
-//               mode — master drives, slave responds on the same bus).
+//               mode - master drives, slave responds on the same bus).
 //               Only provides build, end_of_elaboration, and report phases.
 //               Derived tests implement their own run_phase with specific
 //               sequences and test scenarios.
@@ -56,9 +56,9 @@ class axi4_base_test extends uvm_test;
         // Get virtual interface set by tb_top
         if (!uvm_config_db#(virtual axi4_if)::get(this, "", "vif", env_cfg.master_vif))
             `uvm_fatal(get_type_name(),
-                       "Virtual interface 'vif' not found — must be set by tb_top")
+                       "Virtual interface 'vif' not found - must be set by tb_top")
 
-        // slave_vif remains null → passthrough mode (both agents on same bus)
+        // slave_vif remains null -> passthrough mode (both agents on same bus)
 
         // Push config to environment
         uvm_config_db#(axi4_vip_env_config)::set(this, "env", "cfg", env_cfg);
@@ -68,7 +68,7 @@ class axi4_base_test extends uvm_test;
     endfunction : build_phase
 
     // =========================================================================
-    // End of elaboration — print UVM component topology
+    // End of elaboration - print UVM component topology
     // =========================================================================
     function void end_of_elaboration_phase(uvm_phase phase);
         super.end_of_elaboration_phase(phase);
@@ -76,7 +76,7 @@ class axi4_base_test extends uvm_test;
     endfunction : end_of_elaboration_phase
 
     // =========================================================================
-    // Report phase — print final test result
+    // Report phase - print final test result
     // =========================================================================
     function void report_phase(uvm_phase phase);
         uvm_report_server srv;

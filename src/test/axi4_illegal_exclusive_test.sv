@@ -10,7 +10,7 @@
 //               Because these errors are EXPECTED, a uvm_report_catcher demotes
 //               the slave's "Illegal exclusive" UVM_ERRORs to UVM_INFO (and
 //               counts them). The test then verifies the count matches the
-//               number of illegal transactions sent — so the run passes only
+//               number of illegal transactions sent - so the run passes only
 //               when the checker behaved correctly. Any OTHER error (including
 //               a missing/extra illegal-exclusive report) fails the test.
 //               This file is `included inside axi4_test_pkg.sv.
@@ -20,7 +20,7 @@
 `define AXI4_ILLEGAL_EXCLUSIVE_TEST_INCLUDED_
 
 // =============================================================================
-// Report catcher — demotes the slave's expected illegal-exclusive protocol
+// Report catcher - demotes the slave's expected illegal-exclusive protocol
 // errors to INFO so this negative test can pass, while counting them.
 // =============================================================================
 class axi4_illegal_excl_catcher extends uvm_report_catcher;
@@ -36,7 +36,7 @@ class axi4_illegal_excl_catcher extends uvm_report_catcher;
             get_id()       == "axi4_slave_driver" &&
             str_contains(get_message(), "Illegal exclusive")) begin
             caught++;
-            set_severity(UVM_INFO);   // expected → demote so it does not fail the test
+            set_severity(UVM_INFO);   // expected -> demote so it does not fail the test
         end
         return THROW;                 // still report (now as INFO)
     endfunction : catch

@@ -6,7 +6,7 @@
 //               Parameterised uvm_sequencer for axi4_transaction.
 //               Reserved for future sequence-driven slave responses
 //               (e.g., error injection, custom response patterns).
-//               Currently unused — the slave driver operates in reactive mode.
+//               Currently unused - the slave driver operates in reactive mode.
 //               This file is `included inside axi4_pkg.sv.
 //==============================================================================
 

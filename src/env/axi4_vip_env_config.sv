@@ -34,7 +34,7 @@ class axi4_vip_env_config extends uvm_object;
     //   slave_vif  : AXI4 interface on slave side of DUT (optional)
     //
     //   If slave_vif is null, master_vif is used for both agents.
-    //   This is the "passthrough mode" — both agents observe the same bus.
+    //   This is the "passthrough mode" - both agents observe the same bus.
     // =========================================================================
     virtual axi4_if master_vif;
     virtual axi4_if slave_vif;
@@ -46,7 +46,7 @@ class axi4_vip_env_config extends uvm_object;
     bit has_coverage   = 1;     // Create functional coverage collectors
 
     // =========================================================================
-    // Constructor — creates default agent configs
+    // Constructor - creates default agent configs
     // =========================================================================
     function new(string name = "axi4_vip_env_config");
         super.new(name);

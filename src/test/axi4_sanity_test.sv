@@ -24,7 +24,7 @@ class axi4_sanity_test extends axi4_base_test;
     endfunction : new
 
     // =========================================================================
-    // Run phase — execute write-read-back sequences
+    // Run phase - execute write-read-back sequences
     // =========================================================================
     task run_phase(uvm_phase phase);
         axi4_write_read_back_seq wr_rd_seq;
@@ -54,7 +54,7 @@ class axi4_sanity_test extends axi4_base_test;
             wr_rd_seq.start(env.master_agent.sqr);
         end
 
-        // Drain — wait for slave to finish outstanding responses
+        // Drain - wait for slave to finish outstanding responses
         repeat (50) @(posedge env_cfg.master_vif.clk);
 
         `uvm_info(get_type_name(),

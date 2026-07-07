@@ -75,7 +75,7 @@ class axi4_vip_env extends uvm_env;
         uvm_config_db#(virtual axi4_if)::set(this, "master_agent", "vif", cfg.master_vif);
 
         //   Slave side: use slave_vif if provided, otherwise reuse master_vif
-        //   (passthrough mode — both agents observe the same bus)
+        //   (passthrough mode - both agents observe the same bus)
         if (cfg.slave_vif != null) begin
             uvm_config_db#(virtual axi4_if)::set(this, "slave_agent", "vif", cfg.slave_vif);
         end else begin

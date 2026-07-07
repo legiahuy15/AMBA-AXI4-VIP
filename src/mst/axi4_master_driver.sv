@@ -5,8 +5,8 @@
 // Description : AXI4 master driver.
 //               Receives transactions from the sequencer and drives them
 //               onto the AXI4 bus via the master clocking block.
-//               Write flow : AW + W (parallel) → wait B
-//               Read flow  : AR → wait R (all beats)
+//               Write flow : AW + W (parallel) -> wait B
+//               Read flow  : AR -> wait R (all beats)
 //               This file is `included inside axi4_pkg.sv.
 //==============================================================================
 
@@ -42,7 +42,7 @@ class axi4_master_driver extends uvm_driver #(axi4_transaction);
     endfunction : new
 
     // =========================================================================
-    // Build phase — get virtual interface from config_db
+    // Build phase - get virtual interface from config_db
     // =========================================================================
     function void build_phase(uvm_phase phase);
         super.build_phase(phase);
@@ -51,7 +51,7 @@ class axi4_master_driver extends uvm_driver #(axi4_transaction);
     endfunction : build_phase
 
     // =========================================================================
-    // Run phase — main driver loop (supports parallel/pipelined outstanding transactions)
+    // Run phase - main driver loop (supports parallel/pipelined outstanding transactions)
     // =========================================================================
     task run_phase(uvm_phase phase);
         run_phase_handle = phase;
@@ -101,7 +101,7 @@ class axi4_master_driver extends uvm_driver #(axi4_transaction);
     endtask : run_phase
 
     // =========================================================================
-    // Reset — deassert all master-driven VALID / READY signals
+    // Reset - deassert all master-driven VALID / READY signals
     // =========================================================================
     task reset_signals();
         @(vif.master_cb);
@@ -149,7 +149,7 @@ class axi4_master_driver extends uvm_driver #(axi4_transaction);
     endfunction
 
     // =========================================================================
-    // Channel drive loops — process transactions in FIFO order from the queues
+    // Channel drive loops - process transactions in FIFO order from the queues
     // =========================================================================
     task aw_drive_loop();
         forever begin
@@ -194,7 +194,7 @@ class axi4_master_driver extends uvm_driver #(axi4_transaction);
     endtask : ar_drive_loop
 
     // =========================================================================
-    // AW Channel — Write Address phase
+    // AW Channel - Write Address phase
     // =========================================================================
     task drive_aw_channel(axi4_transaction tr);
         @(vif.master_cb);
@@ -214,12 +214,12 @@ class axi4_master_driver extends uvm_driver #(axi4_transaction);
         do @(vif.master_cb);
         while (!vif.master_cb.AWREADY);
 
-        // Handshake complete — deassert VALID
+        // Handshake complete - deassert VALID
         vif.master_cb.AWVALID <= 1'b0;
     endtask : drive_aw_channel
 
     // =========================================================================
-    // W Channel — Write Data phase
+    // W Channel - Write Data phase
     // =========================================================================
     task drive_w_channel(axi4_transaction tr);
         for (int i = 0; i <= tr.len; i++) begin
@@ -234,13 +234,13 @@ class axi4_master_driver extends uvm_driver #(axi4_transaction);
             while (!vif.master_cb.WREADY);
         end
 
-        // All beats sent — deassert
+        // All beats sent - deassert
         vif.master_cb.WVALID <= 1'b0;
         vif.master_cb.WLAST  <= 1'b0;
     endtask : drive_w_channel
 
     // =========================================================================
-    // AR Channel — Read Address phase
+    // AR Channel - Read Address phase
     // =========================================================================
     task drive_ar_channel(axi4_transaction tr);
         @(vif.master_cb);
@@ -260,7 +260,7 @@ class axi4_master_driver extends uvm_driver #(axi4_transaction);
         do @(vif.master_cb);
         while (!vif.master_cb.ARREADY);
 
-        // Handshake complete — deassert VALID
+        // Handshake complete - deassert VALID
         vif.master_cb.ARVALID <= 1'b0;
     endtask : drive_ar_channel
 
@@ -323,7 +323,7 @@ class axi4_master_driver extends uvm_driver #(axi4_transaction);
                         do @(vif.master_cb);
                         while (!vif.master_cb.RVALID);
 
-                        // AXI4: no read data interleaving — verify RID is
+                        // AXI4: no read data interleaving - verify RID is
                         // consistent across all beats within a burst.
                         if (vif.master_cb.RID !== rid)
                             `uvm_error(get_type_name(),

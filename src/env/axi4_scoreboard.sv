@@ -26,7 +26,7 @@ class axi4_scoreboard extends uvm_scoreboard;
     `uvm_component_utils(axi4_scoreboard)
 
     // =========================================================================
-    // Analysis imports — one per monitor side
+    // Analysis imports - one per monitor side
     // =========================================================================
     uvm_analysis_imp_master #(axi4_transaction, axi4_scoreboard) master_export;
     uvm_analysis_imp_slave  #(axi4_transaction, axi4_scoreboard) slave_export;
@@ -63,7 +63,7 @@ class axi4_scoreboard extends uvm_scoreboard;
     endfunction : new
 
     // =========================================================================
-    // Build phase — create analysis imports
+    // Build phase - create analysis imports
     // =========================================================================
     function void build_phase(uvm_phase phase);
         super.build_phase(phase);
@@ -72,13 +72,13 @@ class axi4_scoreboard extends uvm_scoreboard;
     endfunction : build_phase
 
     // =========================================================================
-    // write_master — called when master monitor broadcasts a completed txn
+    // write_master - called when master monitor broadcasts a completed txn
     // =========================================================================
     function void write_master(axi4_transaction t);
         axi4_transaction tr;
         total_master++;
 
-        // Deep copy — the monitor may reuse the object
+        // Deep copy - the monitor may reuse the object
         tr = axi4_transaction::type_id::create("master_tr");
         tr.copy(t);
 
@@ -93,7 +93,7 @@ class axi4_scoreboard extends uvm_scoreboard;
     endfunction : write_master
 
     // =========================================================================
-    // write_slave — called when slave monitor broadcasts a completed txn
+    // write_slave - called when slave monitor broadcasts a completed txn
     // =========================================================================
     function void write_slave(axi4_transaction t);
         axi4_transaction tr;
@@ -114,7 +114,7 @@ class axi4_scoreboard extends uvm_scoreboard;
     endfunction : write_slave
 
     // =========================================================================
-    // try_match — search for matching transaction on the other side
+    // try_match - search for matching transaction on the other side
     //   Match key: (id, addr)
     //   If found:  compare and consume both.
     //   If not:    push to own queue for future matching.
@@ -129,7 +129,7 @@ class axi4_scoreboard extends uvm_scoreboard;
         // Search other side's queue for a matching transaction
         for (int i = 0; i < other_q.size(); i++) begin
             if (other_q[i].id == new_tr.id && other_q[i].addr == new_tr.addr) begin
-                // Match found — compare and consume
+                // Match found - compare and consume
                 axi4_transaction ref_tr = other_q[i];
                 other_q.delete(i);
                 compare_transactions(ref_tr, new_tr, dir_str);
@@ -137,12 +137,12 @@ class axi4_scoreboard extends uvm_scoreboard;
             end
         end
 
-        // No match on other side — queue for later
+        // No match on other side - queue for later
         own_q.push_back(new_tr);
     endfunction : try_match
 
     // =========================================================================
-    // calc_beat_addr — Calculate address for each beat in a burst
+    // calc_beat_addr - Calculate address for each beat in a burst
     // =========================================================================
     function bit [AXI4_ADDR_WIDTH-1:0] calc_beat_addr(
         bit [AXI4_ADDR_WIDTH-1:0] start_addr,
@@ -188,7 +188,7 @@ class axi4_scoreboard extends uvm_scoreboard;
     endfunction : calc_beat_addr
 
     // =========================================================================
-    // update_ref_mem — update scoreboard's reference memory on WRITES
+    // update_ref_mem - update scoreboard's reference memory on WRITES
     // =========================================================================
     function void update_ref_mem(axi4_transaction tr);
         bit do_write = 1;
@@ -228,7 +228,7 @@ class axi4_scoreboard extends uvm_scoreboard;
     endfunction : update_ref_mem
 
     // =========================================================================
-    // check_ref_mem — verify READ transaction against reference memory
+    // check_ref_mem - verify READ transaction against reference memory
     // =========================================================================
     function void check_ref_mem(axi4_transaction tr);
         for (int beat = 0; beat <= tr.len; beat++) begin
@@ -274,7 +274,7 @@ class axi4_scoreboard extends uvm_scoreboard;
     endfunction : check_ref_mem
 
     // =========================================================================
-    // compare_transactions — detailed comparison using do_compare
+    // compare_transactions - detailed comparison using do_compare
     //   Uses axi4_transaction::compare() which internally calls do_compare
     //   for all fields including the manually-handled rresp[] array.
     // =========================================================================
@@ -308,7 +308,7 @@ class axi4_scoreboard extends uvm_scoreboard;
     endfunction : compare_transactions
 
     // =========================================================================
-    // check_phase — flag errors for unmatched/mismatched transactions
+    // check_phase - flag errors for unmatched/mismatched transactions
     // =========================================================================
     function void check_phase(uvm_phase phase);
         int unsigned unmatched;
@@ -326,7 +326,7 @@ class axi4_scoreboard extends uvm_scoreboard;
     endfunction : check_phase
 
     // =========================================================================
-    // report_phase — print summary statistics
+    // report_phase - print summary statistics
     // =========================================================================
     function void report_phase(uvm_phase phase);
         int unsigned unmatched;

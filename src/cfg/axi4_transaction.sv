@@ -34,13 +34,13 @@ class axi4_transaction extends uvm_sequence_item;
     rand bit [AXI4_DATA_WIDTH-1:0]          data[];     // 1 entry per beat
     rand bit [AXI4_STRB_WIDTH-1:0]          strb[];     // 1 entry per beat
 
-    // Write response — B channel (1 per burst)
+    // Write response - B channel (1 per burst)
     rand axi4_resp_e                        resp;
 
-    // Read response — R channel (1 per beat)
+    // Read response - R channel (1 per beat)
     rand axi4_resp_e                        rresp[];
 
-    // Bus completion event — triggered by driver when B/R response is received.
+    // Bus completion event - triggered by driver when B/R response is received.
     // Sequences can wait on this to implement true outstanding depth control.
     axi4_event_wrapper                      done_event;
 
@@ -63,7 +63,7 @@ class axi4_transaction extends uvm_sequence_item;
         `uvm_field_array_int(              data,     UVM_ALL_ON)
         `uvm_field_array_int(              strb,     UVM_ALL_ON)
         `uvm_field_enum(axi4_resp_e,       resp,     UVM_ALL_ON)
-        // Note: rresp[] uses enum array — no built-in macro for enum dynamic
+        // Note: rresp[] uses enum array - no built-in macro for enum dynamic
         //       arrays, so do_copy/do_compare/do_print handle it manually.
     `uvm_object_utils_end
 
@@ -86,7 +86,7 @@ class axi4_transaction extends uvm_sequence_item;
     }
 
     // Burst size must not exceed data bus width
-    // 2^size <= DATA_WIDTH / 8  →  size <= log2(DATA_WIDTH / 8)
+    // 2^size <= DATA_WIDTH / 8  ->  size <= log2(DATA_WIDTH / 8)
     constraint c_size_max {
         (1 << size) <= (AXI4_DATA_WIDTH / 8);
     }
@@ -181,7 +181,7 @@ class axi4_transaction extends uvm_sequence_item;
     endfunction : new
 
     // =========================================================================
-    // do_copy — deep copy including rresp[] enum array
+    // do_copy - deep copy including rresp[] enum array
     // =========================================================================
     function void do_copy(uvm_object rhs);
         axi4_transaction rhs_t;
@@ -192,12 +192,12 @@ class axi4_transaction extends uvm_sequence_item;
         this.rresp = new[rhs_t.rresp.size()];
         foreach (rhs_t.rresp[i])
             this.rresp[i] = rhs_t.rresp[i];
-        // done_event is per-instance, don't copy — each transaction
+        // done_event is per-instance, don't copy - each transaction
         // gets its own fresh event from the constructor.
     endfunction : do_copy
 
     // =========================================================================
-    // do_compare — compare including rresp[] enum array
+    // do_compare - compare including rresp[] enum array
     // =========================================================================
     function bit do_compare(uvm_object rhs, uvm_comparer comparer);
         axi4_transaction rhs_t;
@@ -225,7 +225,7 @@ class axi4_transaction extends uvm_sequence_item;
     endfunction : do_compare
 
     // =========================================================================
-    // do_print — include rresp[] in UVM print output
+    // do_print - include rresp[] in UVM print output
     // =========================================================================
     function void do_print(uvm_printer printer);
         super.do_print(printer);    // prints all registered fields
@@ -238,7 +238,7 @@ class axi4_transaction extends uvm_sequence_item;
     endfunction : do_print
 
     // =========================================================================
-    // convert2string — human-readable transaction summary for debug
+    // convert2string - human-readable transaction summary for debug
     // =========================================================================
     function string convert2string();
         string s;

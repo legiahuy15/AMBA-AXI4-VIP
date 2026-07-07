@@ -4,7 +4,7 @@
 // Author      : Huy Le
 // Description : AXI4 protocol parameters, enums, and typedefs.
 //               All values follow ARM AMBA AXI4 specification (IHI0022E).
-//               This file is `included inside axi4_pkg.sv — do NOT add
+//               This file is `included inside axi4_pkg.sv - do NOT add
 //               package/endpackage here.
 //==============================================================================
 
@@ -20,9 +20,9 @@
     // ---------------------------------------------------------------------------
     // 2. Burst type (AXI4 spec)
     //    Defines how the address is calculated for each transfer in a burst.
-    //        FIXED — same address for every transfer  (e.g. FIFO access)
-    //        INCR  — incrementing address             (most common)
-    //        WRAP  — wrapping burst                   (cache-line fills)
+    //        FIXED - same address for every transfer  (e.g. FIFO access)
+    //        INCR  - incrementing address             (most common)
+    //        WRAP  - wrapping burst                   (cache-line fills)
     // ---------------------------------------------------------------------------
     typedef enum bit [1:0] {
         AXI4_BURST_FIXED = 2'b00,
@@ -34,10 +34,10 @@
     // ---------------------------------------------------------------------------
     // 3. Response type (AXI4 spec)
     //    Indicates the status of a read/write transaction.
-    //        OKAY   — normal access success
-    //        EXOKAY — exclusive access success
-    //        SLVERR — slave error (valid address, slave-side failure)
-    //        DECERR — decode error (no slave at that address)
+    //        OKAY   - normal access success
+    //        EXOKAY - exclusive access success
+    //        SLVERR - slave error (valid address, slave-side failure)
+    //        DECERR - decode error (no slave at that address)
     // ---------------------------------------------------------------------------
     typedef enum bit [1:0] {
         AXI4_RESP_OKAY   = 2'b00,
@@ -64,8 +64,8 @@
 
     // ---------------------------------------------------------------------------
     // 5. Lock type (AXI4 spec)
-    //        NORMAL    — normal access
-    //        EXCLUSIVE — exclusive access (for atomic read-modify-write)
+    //        NORMAL    - normal access
+    //        EXCLUSIVE - exclusive access (for atomic read-modify-write)
     // ---------------------------------------------------------------------------
     typedef enum bit {
         AXI4_LOCK_NORMAL    = 1'b0,

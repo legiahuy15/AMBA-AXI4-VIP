@@ -5,7 +5,7 @@
 // Description : Test for back-to-back pipelined transactions.
 //               Fires consecutive writes then reads without waiting for
 //               individual completions. Tests bus throughput and handshake
-//               pipelining. 8 transactions — ideal for waveform capture.
+//               pipelining. 8 transactions - ideal for waveform capture.
 //               This file is `included inside axi4_test_pkg.sv.
 //==============================================================================
 
@@ -31,7 +31,7 @@ class axi4_back_to_back_test extends axi4_base_test;
         b2b_seq = axi4_back_to_back_seq::type_id::create("b2b_seq");
         b2b_seq.start(env.master_agent.sqr);
 
-        // Drain time — allow last responses to propagate
+        // Drain time - allow last responses to propagate
         repeat (100) @(posedge env_cfg.master_vif.clk);
 
         `uvm_info(get_type_name(),

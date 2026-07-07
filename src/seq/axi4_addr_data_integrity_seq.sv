@@ -39,7 +39,7 @@ class axi4_addr_data_integrity_seq extends axi4_base_sequence;
     endfunction : new
 
     // =========================================================================
-    // ref_beat_addr — INDEPENDENT (spec-derived) per-beat address.
+    // ref_beat_addr - INDEPENDENT (spec-derived) per-beat address.
     //   Intentionally a separate implementation from the driver/scoreboard's
     //   calc_beat_addr so a bug in either is exposed.
     // =========================================================================
@@ -67,7 +67,7 @@ class axi4_addr_data_integrity_seq extends axi4_base_sequence;
     endfunction : ref_beat_addr
 
     // =========================================================================
-    // ref_beat_data — expected RDATA word for a beat, given mem[A] == A[7:0].
+    // ref_beat_data - expected RDATA word for a beat, given mem[A] == A[7:0].
     //   Mirrors the AXI4 byte-lane rule (lane = addr % STRB_WIDTH); inactive
     //   lanes read as 0.
     // =========================================================================
@@ -84,7 +84,7 @@ class axi4_addr_data_integrity_seq extends axi4_base_sequence;
     endfunction : ref_beat_data
 
     // =========================================================================
-    // seed_memory — trusted INCR write so mem[BASE+k] == (BASE+k)[7:0].
+    // seed_memory - trusted INCR write so mem[BASE+k] == (BASE+k)[7:0].
     //   64 beats * 4 bytes = 256 bytes. Fields are set manually (no randomize)
     //   so the payload is exactly the address-encoded pattern.
     // =========================================================================
@@ -116,7 +116,7 @@ class axi4_addr_data_integrity_seq extends axi4_base_sequence;
     endtask : seed_memory
 
     // =========================================================================
-    // read_and_check — read one burst and verify every beat independently.
+    // read_and_check - read one burst and verify every beat independently.
     // =========================================================================
     task read_and_check(bit [AXI4_ADDR_WIDTH-1:0] addr,
                         axi4_size_e               size,
@@ -172,7 +172,7 @@ class axi4_addr_data_integrity_seq extends axi4_base_sequence;
         read_and_check(BASE + 32'h06, AXI4_SIZE_2B, AXI4_BURST_WRAP, 8'd7,  "WRAP_2B");
         // Unaligned INCR 4B: first beat at a non-4B-aligned address
         read_and_check(BASE + 32'h02, AXI4_SIZE_4B, AXI4_BURST_INCR, 8'd3,  "UNALIGN_4B");
-        // Narrow 1B, 8 beats — byte-lane rotates every beat
+        // Narrow 1B, 8 beats - byte-lane rotates every beat
         read_and_check(BASE + 32'h10, AXI4_SIZE_1B, AXI4_BURST_INCR, 8'd7,  "NARROW_1B");
         // Narrow 2B, 6 beats
         read_and_check(BASE + 32'h20, AXI4_SIZE_2B, AXI4_BURST_INCR, 8'd5,  "NARROW_2B");

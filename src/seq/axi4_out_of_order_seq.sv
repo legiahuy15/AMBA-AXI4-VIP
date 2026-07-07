@@ -33,7 +33,7 @@ class axi4_out_of_order_seq extends axi4_base_sequence;
     endfunction : new
 
     // =========================================================================
-    // body — generate write/read transactions concurrently with different IDs
+    // body - generate write/read transactions concurrently with different IDs
     // =========================================================================
     virtual task body();
         semaphore sem_write;

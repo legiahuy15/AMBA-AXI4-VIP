@@ -29,7 +29,7 @@ class axi4_random_seq extends axi4_base_sequence;
     endfunction : new
 
     // =========================================================================
-    // body — generate num_txns random write/read transactions
+    // body - generate num_txns random write/read transactions
     // =========================================================================
     virtual task body();
         `uvm_info(get_type_name(),

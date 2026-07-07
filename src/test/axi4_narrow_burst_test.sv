@@ -5,7 +5,7 @@
 // Description : Test for AXI4 narrow burst transfers.
 //               Runs the narrow burst sequence to demonstrate transfers
 //               where AxSIZE < data bus width (1B and 2B on 32-bit bus).
-//               Only 4 transactions — ideal for waveform capture.
+//               Only 4 transactions - ideal for waveform capture.
 //               This file is `included inside axi4_test_pkg.sv.
 //==============================================================================
 

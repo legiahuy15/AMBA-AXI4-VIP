@@ -27,7 +27,7 @@ class axi4_back_to_back_seq extends axi4_base_sequence;
     endfunction : new
 
     // =========================================================================
-    // body — fire writes then reads back-to-back
+    // body - fire writes then reads back-to-back
     // =========================================================================
     virtual task body();
         axi4_transaction tr;
@@ -38,7 +38,7 @@ class axi4_back_to_back_seq extends axi4_base_sequence;
                   UVM_MEDIUM)
 
         // =================================================================
-        // Phase 1: 4 consecutive writes — different IDs and addresses
+        // Phase 1: 4 consecutive writes - different IDs and addresses
         //   Sent without waiting for B response. On waveform, you should
         //   see AW handshakes pipelining (next AWVALID right after AWREADY).
         // =================================================================
@@ -58,7 +58,7 @@ class axi4_back_to_back_seq extends axi4_base_sequence;
                 }) `uvm_fatal(get_type_name(),
                               $sformatf("Randomization failed for B2B write #%0d", i))
                 finish_item(wr_trs[i]);
-                // Do NOT wait for done_event here — fire next immediately
+                // Do NOT wait for done_event here - fire next immediately
             end
 
             `uvm_info(get_type_name(),
@@ -70,7 +70,7 @@ class axi4_back_to_back_seq extends axi4_base_sequence;
         end
 
         // =================================================================
-        // Phase 2: 4 consecutive reads — same addresses (read-back)
+        // Phase 2: 4 consecutive reads - same addresses (read-back)
         //   Also pipelined. On waveform: AR handshakes chain without gaps.
         // =================================================================
         for (int i = 0; i < 4; i++) begin

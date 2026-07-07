@@ -25,7 +25,7 @@ class axi4_wr_order_demo_seq extends axi4_base_sequence;
     endfunction : new
 
     // =========================================================================
-    // body — send one transaction per write ordering mode
+    // body - send one transaction per write ordering mode
     // =========================================================================
     virtual task body();
         axi4_transaction tr;
@@ -88,7 +88,7 @@ class axi4_wr_order_demo_seq extends axi4_base_sequence;
         // -----------------------------------------------------------------
         // Transaction 3: W_BEFORE_AW (data beats start before address)
         //   Master drives W data first, then sends AW address.
-        //   On waveform: WVALID asserts before AWVALID — clearly visible.
+        //   On waveform: WVALID asserts before AWVALID - clearly visible.
         // -----------------------------------------------------------------
         tr = axi4_transaction::type_id::create("wr_w_first_tr");
         start_item(tr);

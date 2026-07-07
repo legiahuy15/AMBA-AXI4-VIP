@@ -8,7 +8,7 @@
 //               configs, coverage, scoreboard, and environment.
 //
 //               Note: axi4_if.sv (SystemVerilog interface) is NOT included
-//               here — it must be compiled separately before this package.
+//               here - it must be compiled separately before this package.
 //==============================================================================
 
 `ifndef AXI4_PKG_INCLUDED_

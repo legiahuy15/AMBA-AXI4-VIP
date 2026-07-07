@@ -23,7 +23,7 @@ class axi4_random_test extends axi4_base_test;
     endfunction : new
 
     // =========================================================================
-    // Run phase — execute random mixed-traffic sequence
+    // Run phase - execute random mixed-traffic sequence
     // =========================================================================
     task run_phase(uvm_phase phase);
         axi4_random_seq rand_seq;
@@ -49,7 +49,7 @@ class axi4_random_test extends axi4_base_test;
         // Start sequence on master sequencer
         rand_seq.start(env.master_agent.sqr);
 
-        // Drain time — wait for outstanding responses to complete
+        // Drain time - wait for outstanding responses to complete
         repeat (100) @(posedge env_cfg.master_vif.clk);
 
         `uvm_info(get_type_name(),

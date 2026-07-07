@@ -5,7 +5,7 @@
 // Description : AXI4 slave agent.
 //               Encapsulates sequencer, driver, and monitor for the slave
 //               side of an AXI4 interface. Supports active and passive modes.
-//               In active mode, the slave driver operates reactively —
+//               In active mode, the slave driver operates reactively -
 //               responding to incoming master requests with configurable
 //               back-pressure and response delays.
 //               This file is `included inside axi4_pkg.sv.
@@ -46,7 +46,7 @@ class axi4_slave_agent extends uvm_agent;
         // Config
         if (!uvm_config_db#(axi4_agent_config)::get(this, "", "cfg", cfg)) begin
             `uvm_info(get_type_name(),
-                      "No agent config found — using defaults (ACTIVE, coverage ON)",
+                      "No agent config found - using defaults (ACTIVE, coverage ON)",
                       UVM_MEDIUM)
             cfg = axi4_agent_config::type_id::create("cfg");
         end
@@ -77,11 +77,11 @@ class axi4_slave_agent extends uvm_agent;
             sqr = axi4_slave_sequencer::type_id::create("sqr", this);
 
             `uvm_info(get_type_name(),
-                      $sformatf("ACTIVE mode — ready_delay=[%0d:%0d] resp_delay=[%0d:%0d]",
+                      $sformatf("ACTIVE mode - ready_delay=[%0d:%0d] resp_delay=[%0d:%0d]",
                                 cfg.ready_delay_min, cfg.ready_delay_max,
                                 cfg.resp_delay_min,  cfg.resp_delay_max), UVM_MEDIUM)
         end else begin
-            `uvm_info(get_type_name(), "PASSIVE mode — monitor only", UVM_MEDIUM)
+            `uvm_info(get_type_name(), "PASSIVE mode - monitor only", UVM_MEDIUM)
         end
     endfunction : build_phase
 

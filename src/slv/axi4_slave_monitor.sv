@@ -8,8 +8,8 @@
 //               placed on the slave-side interface. Log messages reflect the
 //               slave perspective (requests "received", responses "sent").
 //
-//               Write path: AW → W beats → B response → ap.write()
-//               Read path:  AR → R beats (until RLAST) → ap.write()
+//               Write path: AW -> W beats -> B response -> ap.write()
+//               Read path:  AR -> R beats (until RLAST) -> ap.write()
 //
 //               Supports outstanding AW transactions and out-of-order
 //               B/R responses (matched by ID).
@@ -23,14 +23,14 @@ class axi4_slave_monitor extends uvm_monitor;
     // Virtual interface handle
     virtual axi4_if vif;
 
-    // Analysis port — broadcasts completed transactions to scoreboard/coverage
+    // Analysis port - broadcasts completed transactions to scoreboard/coverage
     uvm_analysis_port #(axi4_transaction) ap;
 
     // =========================================================================
     // Internal types and queues
     // =========================================================================
 
-    // W beat storage — collected independently of AW to avoid timing issues
+    // W beat storage - collected independently of AW to avoid timing issues
     typedef struct {
         bit [AXI4_DATA_WIDTH-1:0] data;
         bit [AXI4_STRB_WIDTH-1:0] strb;
@@ -53,7 +53,7 @@ class axi4_slave_monitor extends uvm_monitor;
     endfunction : new
 
     // =========================================================================
-    // Build phase — create analysis port, get virtual interface
+    // Build phase - create analysis port, get virtual interface
     // =========================================================================
     function void build_phase(uvm_phase phase);
         super.build_phase(phase);
@@ -63,12 +63,12 @@ class axi4_slave_monitor extends uvm_monitor;
     endfunction : build_phase
 
     // =========================================================================
-    // Run phase — fork all channel monitors with reset handling
+    // Run phase - fork all channel monitors with reset handling
     // =========================================================================
     task run_phase(uvm_phase phase);
         forever begin
             @(posedge vif.rst_n);
-            `uvm_info(get_type_name(), "Reset deasserted — monitor active", UVM_MEDIUM)
+            `uvm_info(get_type_name(), "Reset deasserted - monitor active", UVM_MEDIUM)
 
             fork
                 monitor_aw_channel();
@@ -79,7 +79,7 @@ class axi4_slave_monitor extends uvm_monitor;
                 monitor_r_channel();
                 begin : rst_watch
                     @(negedge vif.rst_n);
-                    `uvm_info(get_type_name(), "Reset asserted — flushing state", UVM_MEDIUM)
+                    `uvm_info(get_type_name(), "Reset asserted - flushing state", UVM_MEDIUM)
                 end
             join_any
             disable fork;
@@ -88,7 +88,7 @@ class axi4_slave_monitor extends uvm_monitor;
     endtask : run_phase
 
     // =========================================================================
-    // AW Channel — Capture write address received by slave
+    // AW Channel - Capture write address received by slave
     // =========================================================================
     task monitor_aw_channel();
         forever begin
@@ -119,7 +119,7 @@ class axi4_slave_monitor extends uvm_monitor;
     endtask : monitor_aw_channel
 
     // =========================================================================
-    // W Channel — Collect raw W beats received by slave
+    // W Channel - Collect raw W beats received by slave
     //   Collected independently of AW to handle same-cycle handshakes.
     // =========================================================================
     task monitor_w_beats();
@@ -137,7 +137,7 @@ class axi4_slave_monitor extends uvm_monitor;
     endtask : monitor_w_beats
 
     // =========================================================================
-    // Assemble Write Data — Match AW with W beats, push to pending_b
+    // Assemble Write Data - Match AW with W beats, push to pending_b
     // =========================================================================
     task assemble_write_data();
         forever begin
@@ -169,7 +169,7 @@ class axi4_slave_monitor extends uvm_monitor;
     endtask : assemble_write_data
 
     // =========================================================================
-    // B Channel — Capture write response sent by slave
+    // B Channel - Capture write response sent by slave
     // =========================================================================
     task monitor_b_channel();
         forever begin
@@ -190,13 +190,13 @@ class axi4_slave_monitor extends uvm_monitor;
                 ap.write(tr);
             end else begin
                 `uvm_error(get_type_name(),
-                           $sformatf("B response ID=0x%0h — no matching write pending", bid))
+                           $sformatf("B response ID=0x%0h - no matching write pending", bid))
             end
         end
     endtask : monitor_b_channel
 
     // =========================================================================
-    // AR Channel — Capture read address received by slave
+    // AR Channel - Capture read address received by slave
     // =========================================================================
     task monitor_ar_channel();
         forever begin
@@ -227,7 +227,7 @@ class axi4_slave_monitor extends uvm_monitor;
     endtask : monitor_ar_channel
 
     // =========================================================================
-    // R Channel — Collect read data beats sent by slave
+    // R Channel - Collect read data beats sent by slave
     //   AXI4: no interleaving. Beats for one transaction arrive contiguously.
     //   Matched by RID against pending_r queues.
     // =========================================================================
@@ -244,7 +244,7 @@ class axi4_slave_monitor extends uvm_monitor;
 
             if (!pending_r.exists(rid) || pending_r[rid].size() == 0) begin
                 `uvm_error(get_type_name(),
-                           $sformatf("R data ID=0x%0h — no matching AR pending", rid))
+                           $sformatf("R data ID=0x%0h - no matching AR pending", rid))
                 // Drain until RLAST
                 while (!vif.monitor_cb.RLAST) begin
                     do @(vif.monitor_cb);
@@ -290,7 +290,7 @@ class axi4_slave_monitor extends uvm_monitor;
     endtask : monitor_r_channel
 
     // =========================================================================
-    // flush_queues — clear all internal state (called on reset)
+    // flush_queues - clear all internal state (called on reset)
     // =========================================================================
     function void flush_queues();
         aw_queue.delete();
@@ -300,7 +300,7 @@ class axi4_slave_monitor extends uvm_monitor;
     endfunction : flush_queues
 
     // =========================================================================
-    // report_phase — warn about incomplete transactions at end of simulation
+    // report_phase - warn about incomplete transactions at end of simulation
     // =========================================================================
     function void report_phase(uvm_phase phase);
         if (aw_queue.size() > 0)

@@ -9,9 +9,9 @@
 //               waveform capture of B-channel / R-channel error responses.
 //
 //               Address map (defined by slave driver):
-//                 [0x0000_0000 : 0xDFFF_FFFF] → OKAY
-//                 [0xE000_0000 : 0xEFFF_FFFF] → SLVERR
-//                 [0xF000_0000 : 0xFFFF_FFFF] → DECERR
+//                 [0x0000_0000 : 0xDFFF_FFFF] -> OKAY
+//                 [0xE000_0000 : 0xEFFF_FFFF] -> SLVERR
+//                 [0xF000_0000 : 0xFFFF_FFFF] -> DECERR
 //
 //               This file is `included inside axi4_pkg.sv.
 //==============================================================================
@@ -31,7 +31,7 @@ class axi4_error_response_seq extends axi4_base_sequence;
     endfunction : new
 
     // =========================================================================
-    // body — demonstrate each response type: OKAY, SLVERR, DECERR
+    // body - demonstrate each response type: OKAY, SLVERR, DECERR
     // =========================================================================
     virtual task body();
         axi4_transaction tr;
@@ -41,14 +41,14 @@ class axi4_error_response_seq extends axi4_base_sequence;
                   UVM_MEDIUM)
 
         // =================================================================
-        // Pair 1: OKAY region — normal access to valid address
+        // Pair 1: OKAY region - normal access to valid address
         // =================================================================
         // Write
         tr = axi4_transaction::type_id::create("okay_wr_tr");
         start_item(tr);
         if (!tr.randomize() with {
             dir   == AXI4_WRITE;
-            addr  == 32'h0000_0100;    // Normal address → OKAY
+            addr  == 32'h0000_0100;    // Normal address -> OKAY
             len   == 0;                // Single beat
             size  == AXI4_SIZE_4B;
             burst == AXI4_BURST_INCR;
@@ -78,7 +78,7 @@ class axi4_error_response_seq extends axi4_base_sequence;
                             tr.addr, tr.rresp[0].name()), UVM_MEDIUM)
 
         // =================================================================
-        // Pair 2: SLVERR region — slave error response
+        // Pair 2: SLVERR region - slave error response
         // =================================================================
         // Write
         tr = axi4_transaction::type_id::create("slverr_wr_tr");
@@ -115,7 +115,7 @@ class axi4_error_response_seq extends axi4_base_sequence;
                             tr.addr, tr.rresp[0].name()), UVM_MEDIUM)
 
         // =================================================================
-        // Pair 3: DECERR region — decode error response
+        // Pair 3: DECERR region - decode error response
         // =================================================================
         // Write
         tr = axi4_transaction::type_id::create("decerr_wr_tr");

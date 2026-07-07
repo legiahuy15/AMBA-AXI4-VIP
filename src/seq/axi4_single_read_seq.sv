@@ -16,7 +16,7 @@ class axi4_single_read_seq extends axi4_base_sequence;
     `uvm_object_utils(axi4_single_read_seq)
 
     // =========================================================================
-    // Configurable fields — set before starting, or leave random
+    // Configurable fields - set before starting, or leave random
     // =========================================================================
     rand bit [AXI4_ADDR_WIDTH-1:0] addr;
     rand bit [AXI4_LEN_WIDTH-1:0]  len;
@@ -37,7 +37,7 @@ class axi4_single_read_seq extends axi4_base_sequence;
     endfunction : new
 
     // =========================================================================
-    // body — create, randomise, and send one read transaction
+    // body - create, randomise, and send one read transaction
     // =========================================================================
     virtual task body();
         axi4_transaction tr;

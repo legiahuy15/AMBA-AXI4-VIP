@@ -30,8 +30,8 @@ class axi4_outstanding_test extends axi4_base_test;
     bit          r_reorder  = 1;
 
     // =========================================================================
-    // Build phase — push slave-driver config BEFORE env/agent/drv are built
-    //   UVM phase order: build → connect → … → run
+    // Build phase - push slave-driver config BEFORE env/agent/drv are built
+    //   UVM phase order: build -> connect -> … -> run
     //   Slave driver reads config_db in its build_phase, so we must set
     //   the values here, before super.build_phase() creates the env tree.
     // =========================================================================
@@ -40,7 +40,7 @@ class axi4_outstanding_test extends axi4_base_test;
         void'($value$plusargs("OUTSTANDING_DEPTH=%d", depth));
         void'($value$plusargs("R_REORDER_EN=%d", r_reorder));
 
-        // Push config BEFORE super.build_phase creates env → slave_agent → drv
+        // Push config BEFORE super.build_phase creates env -> slave_agent -> drv
         uvm_config_db#(bit)::set(this, "env.slave_agent.drv",
                                  "r_reorder_enable", r_reorder);
         uvm_config_db#(int unsigned)::set(this, "env.slave_agent.drv",
@@ -50,7 +50,7 @@ class axi4_outstanding_test extends axi4_base_test;
     endfunction : build_phase
 
     // =========================================================================
-    // Run phase — execute outstanding sequence
+    // Run phase - execute outstanding sequence
     // =========================================================================
     task run_phase(uvm_phase phase);
         axi4_outstanding_seq outstanding_seq;
@@ -77,7 +77,7 @@ class axi4_outstanding_test extends axi4_base_test;
         // Start sequence on master sequencer
         outstanding_seq.start(env.master_agent.sqr);
 
-        // Drain time — wait for outstanding responses to complete
+        // Drain time - wait for outstanding responses to complete
         repeat (100) @(posedge env_cfg.master_vif.clk);
 
         `uvm_info(get_type_name(), "Outstanding test completed successfully", UVM_LOW)

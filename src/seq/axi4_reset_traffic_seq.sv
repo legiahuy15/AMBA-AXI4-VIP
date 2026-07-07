@@ -34,7 +34,7 @@ class axi4_reset_traffic_seq extends axi4_base_sequence;
     endfunction : new
 
     // =========================================================================
-    // body — queue multi-beat bursts (fire-and-forget: no done_event wait) so
+    // body - queue multi-beat bursts (fire-and-forget: no done_event wait) so
     //   the bus stays busy and a reset lands mid-burst.
     // =========================================================================
     virtual task body();
@@ -50,7 +50,7 @@ class axi4_reset_traffic_seq extends axi4_base_sequence;
                 addr  inside {[32'h0000_8000 : 32'h0000_8FFF]};
                 burst == AXI4_BURST_INCR;
                 size  == AXI4_SIZE_4B;
-                len   inside {3, 7};                 // multi-beat → reset can hit mid-burst
+                len   inside {3, 7};                 // multi-beat -> reset can hit mid-burst
                 lock  == AXI4_LOCK_NORMAL;
             }) `uvm_fatal(get_type_name(), "Randomization failed in reset traffic seq")
             finish_item(tr);

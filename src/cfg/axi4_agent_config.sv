@@ -15,8 +15,8 @@ class axi4_agent_config extends uvm_object;
     // =========================================================================
     // Agent mode
     // =========================================================================
-    //   UVM_ACTIVE  — agent has driver + sequencer + monitor (drives traffic)
-    //   UVM_PASSIVE — agent has monitor only (passive observation)
+    //   UVM_ACTIVE  - agent has driver + sequencer + monitor (drives traffic)
+    //   UVM_PASSIVE - agent has monitor only (passive observation)
     uvm_active_passive_enum is_active = UVM_ACTIVE;
 
     // =========================================================================
@@ -25,7 +25,7 @@ class axi4_agent_config extends uvm_object;
     bit has_coverage = 1;       // Enable functional coverage collection
 
     // =========================================================================
-    // Slave driver timing — back-pressure and response delays
+    // Slave driver timing - back-pressure and response delays
     //   Only used by slave agent. Ignored by master agent.
     //   When max = 0, no delay is inserted (fastest response).
     // =========================================================================

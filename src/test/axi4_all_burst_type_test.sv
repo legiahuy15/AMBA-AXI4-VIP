@@ -4,7 +4,7 @@
 // Author      : Huy Le
 // Description : Test for all AXI4 burst types (FIXED, INCR, WRAP).
 //               Runs the all-burst-type sequence with one write+read pair
-//               per burst type. Total 6 transactions — ideal for waveform
+//               per burst type. Total 6 transactions - ideal for waveform
 //               comparison of address calculation across burst modes.
 //               This file is `included inside axi4_test_pkg.sv.
 //==============================================================================

@@ -16,7 +16,7 @@ class axi4_base_sequence extends uvm_sequence #(axi4_transaction);
     `uvm_object_utils(axi4_base_sequence)
 
     // =========================================================================
-    // Configurable knobs — override from test or parent sequence
+    // Configurable knobs - override from test or parent sequence
     // =========================================================================
     bit [AXI4_ADDR_WIDTH-1:0] addr_lo  = 0;                        // Address range lower
     bit [AXI4_ADDR_WIDTH-1:0] addr_hi  = {AXI4_ADDR_WIDTH{1'b1}};  // Address range upper

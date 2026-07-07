@@ -7,7 +7,7 @@
 //               delays on all channels, then runs a random mixed workload.
 //               This exercises timing corners that the zero-delay tests never
 //               reach: xREADY asserted many cycles after xVALID, WREADY
-//               de-asserted mid-W-burst, delayed B/R responses — hitting the
+//               de-asserted mid-W-burst, delayed B/R responses - hitting the
 //               SVA back-pressure/stability checks and the *_BACKPRESSURE_COV
 //               cover properties. The scoreboard stays ON so data integrity is
 //               verified while the bus is stalling.
@@ -27,7 +27,7 @@ class axi4_backpressure_test extends axi4_base_test;
 
     function void build_phase(uvm_phase phase);
         super.build_phase(phase);
-        // Large, asymmetric random delays on the slave — both back-pressure
+        // Large, asymmetric random delays on the slave - both back-pressure
         // (xREADY latency) and response (B/R) latency.
         env_cfg.slave_agent_cfg.ready_delay_min = 3;
         env_cfg.slave_agent_cfg.ready_delay_max = 8;

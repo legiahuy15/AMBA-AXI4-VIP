@@ -60,11 +60,11 @@ module tb_top;
         automatic uvm_event reset_ev = uvm_event_pool::get_global("axi4_reset_req");
         forever begin
             reset_ev.wait_trigger();
-            `uvm_info("TB_TOP", "Mid-sim reset requested — asserting rst_n", UVM_LOW)
+            `uvm_info("TB_TOP", "Mid-sim reset requested - asserting rst_n", UVM_LOW)
             rst_n = 1'b0;
             repeat (8) @(posedge clk);
             rst_n = 1'b1;
-            `uvm_info("TB_TOP", "Mid-sim reset pulse complete — rst_n deasserted", UVM_LOW)
+            `uvm_info("TB_TOP", "Mid-sim reset pulse complete - rst_n deasserted", UVM_LOW)
         end
     end
 
@@ -81,7 +81,7 @@ module tb_top;
     );
 
     // =========================================================================
-    // SVA — AXI4 protocol assertion checker
+    // SVA - AXI4 protocol assertion checker
     //   Direct instantiation (Old versions of QuestaSim does not support bind-to-interface).
     //   All signals are connected via the interface instance `intf`.
     // =========================================================================
@@ -166,7 +166,7 @@ module tb_top;
     // Safety simulation watchdog
     //   Prevents a regression from hanging forever if a test deadlocks (e.g. a
     //   lost handshake or a dropped response). Fires a UVM_FATAL, which prints
-    //   the report summary and ends the run cleanly — so the regression harness
+    //   the report summary and ends the run cleanly - so the regression harness
     //   detects the failure via its UVM_FATAL grep.
     //   The timeout (in ns) is overridable from the command line:
     //       make run PLUSARGS=+TIMEOUT_NS=2000000
