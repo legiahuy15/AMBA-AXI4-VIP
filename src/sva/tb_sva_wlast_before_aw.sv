@@ -27,11 +27,7 @@
 //                                     Expect exactly ONE [SVA] error:
 //                                     "WLAST missing/late, W before AW".
 //
-//               Run from sim/ (QuestaSim):
-//                 vlog -sv +incdir+../src ../src/sva/axi4_sva.sv \
-//                      ../src/sva/tb_sva_wlast_before_aw.sv
-//                 vsim -c tb_sva_wlast_before_aw -do "run -all; quit -f"
-//               or:  make sva_unit
+//               Run from sim/ (QuestaSim): make sva_unit
 //==============================================================================
 
 `timescale 1ns/1ps
