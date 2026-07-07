@@ -1,4 +1,4 @@
-//==============================================================================
+//=============================================================================
 // File        : axi4_transaction.sv
 // Project     : AXI4 VIP
 // Author      : Huy Le
@@ -6,13 +6,13 @@
 //               Contains all fields for a single AXI4 read/write transaction,
 //               constraints per AXI4 spec, and utility methods for debug.
 //               This file is `included inside axi4_pkg.sv.
-//==============================================================================
+//=============================================================================
 
 class axi4_transaction extends uvm_sequence_item;
 
-    // =========================================================================
+    //-------------------------------------------------------------------------
     // Transaction fields
-    // =========================================================================
+    //-------------------------------------------------------------------------
 
     // VIP-internal
     rand axi4_dir_e                         dir;        // Direction (0: read - 1: write)
@@ -44,9 +44,9 @@ class axi4_transaction extends uvm_sequence_item;
     // Sequences can wait on this to implement true outstanding depth control.
     axi4_event_wrapper                      done_event;
 
-    // =========================================================================
+    //-------------------------------------------------------------------------
     // UVM utility macro
-    // =========================================================================
+    //-------------------------------------------------------------------------
     `uvm_object_utils_begin(axi4_transaction)
         `uvm_field_enum(axi4_dir_e,        dir,      UVM_ALL_ON)
         `uvm_field_enum(axi4_wr_order_e,   wr_order, UVM_ALL_ON)
@@ -67,9 +67,9 @@ class axi4_transaction extends uvm_sequence_item;
         //       arrays, so do_copy/do_compare/do_print handle it manually.
     `uvm_object_utils_end
 
-    // =========================================================================
+    //-------------------------------------------------------------------------
     // Constraints
-    // =========================================================================
+    //-------------------------------------------------------------------------
 
     // Data / strobe array size must match burst length
     constraint c_data_size {
@@ -112,11 +112,11 @@ class axi4_transaction extends uvm_sequence_item;
         (burst == AXI4_BURST_INCR) -> len <= 255;
     }
 
-    // Exclusive access rules (AXI4 spec A7.2): a legal exclusive transaction must
-    //   - span a power-of-two number of bytes (2^size is pow2, so len+1 must be pow2),
-    //   - not exceed 128 bytes in total,
-    //   - use at most 16 beats,
-    //   - start at an address aligned to the total byte count.
+    // Exclusive access rules: a legal exclusive transaction must
+    //   - span a power-of-two number of bytes (2^size is pow2, so len+1 must be pow2)
+    //   - not exceed 128 bytes in total
+    //   - use at most 16 beats
+    //   - start at an address aligned to the total byte count
     // Constraining the master guarantees it never issues an illegal exclusive access.
     constraint c_exclusive_legal {
         (lock == AXI4_LOCK_EXCLUSIVE) -> {
@@ -172,20 +172,20 @@ class axi4_transaction extends uvm_sequence_item;
         (dir == AXI4_READ) -> wr_order == AXI4_WR_PARALLEL;
     }
 
-    // =========================================================================
+    //-------------------------------------------------------------------------
     // Constructor
-    // =========================================================================
+    //-------------------------------------------------------------------------
     function new(string name = "axi4_transaction");
         super.new(name);
         done_event = new;
     endfunction : new
 
-    // =========================================================================
+    //-------------------------------------------------------------------------
     // do_copy - deep copy including rresp[] enum array
-    // =========================================================================
+    //-------------------------------------------------------------------------
     function void do_copy(uvm_object rhs);
         axi4_transaction rhs_t;
-        super.do_copy(rhs);     // copies all `uvm_field_*` registered fields
+        super.do_copy(rhs);     // copies all registered fields
         if (!$cast(rhs_t, rhs))
             `uvm_fatal(get_type_name(), "do_copy: cast failed")
         // Manual copy of rresp[] (enum array, no built-in macro)
@@ -196,9 +196,9 @@ class axi4_transaction extends uvm_sequence_item;
         // gets its own fresh event from the constructor.
     endfunction : do_copy
 
-    // =========================================================================
+    //-------------------------------------------------------------------------
     // do_compare - compare including rresp[] enum array
-    // =========================================================================
+    //-------------------------------------------------------------------------
     function bit do_compare(uvm_object rhs, uvm_comparer comparer);
         axi4_transaction rhs_t;
         bit result;
@@ -224,11 +224,11 @@ class axi4_transaction extends uvm_sequence_item;
         return result;
     endfunction : do_compare
 
-    // =========================================================================
+    //-------------------------------------------------------------------------
     // do_print - include rresp[] in UVM print output
-    // =========================================================================
+    //-------------------------------------------------------------------------
     function void do_print(uvm_printer printer);
-        super.do_print(printer);    // prints all registered fields
+        super.do_print(printer);   // prints all registered fields
         // Manually print rresp[] enum array
         printer.print_generic("rresp.size()", "int", $bits(rresp.size()),
                               $sformatf("%0d", rresp.size()));
@@ -237,9 +237,9 @@ class axi4_transaction extends uvm_sequence_item;
                                   rresp[i].name());
     endfunction : do_print
 
-    // =========================================================================
+    //-------------------------------------------------------------------------
     // convert2string - human-readable transaction summary for debug
-    // =========================================================================
+    //-------------------------------------------------------------------------
     function string convert2string();
         string s;
         s = $sformatf("\n---------- AXI4 Transaction ----------");

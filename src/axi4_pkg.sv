@@ -64,6 +64,7 @@ package axi4_pkg;
     `include "seq/axi4_strobe_pattern_seq.sv"
     `include "seq/axi4_burst_sweep_seq.sv"
     `include "seq/axi4_wr_order_demo_seq.sv"
+    `include "seq/axi4_wlast_before_aw_seq.sv"
     `include "seq/axi4_narrow_burst_seq.sv"
     `include "seq/axi4_error_response_seq.sv"
     `include "seq/axi4_all_burst_type_seq.sv"

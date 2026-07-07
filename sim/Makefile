@@ -46,7 +46,8 @@ TEST_LIST     ?= axi4_sanity_test axi4_random_test axi4_outstanding_test \
                  axi4_exclusive_fail_test axi4_reset_mid_burst_test \
                  axi4_unaligned_test axi4_cache_prot_test \
                  axi4_strobe_test axi4_burst_sweep_test \
-                 axi4_wr_order_demo_test axi4_narrow_burst_test \
+                 axi4_wr_order_demo_test axi4_wlast_before_aw_test \
+                 axi4_narrow_burst_test \
                  axi4_error_response_test axi4_all_burst_type_test \
                  axi4_back_to_back_test \
                  axi4_data_integrity_test \
@@ -77,7 +78,7 @@ endif
 # ==============================================================================
 # 4. Main Targets
 # ==============================================================================
-.PHONY: help compile optimize run regress merge_cov cov_report gui clean
+.PHONY: help compile optimize run regress merge_cov cov_report gui clean sva_unit
 
 help:
 	@echo "========================================================================"
@@ -155,6 +156,22 @@ gui: optimize
 			add wave sim:/tb_top/intf/RLAST sim:/tb_top/intf/RVALID sim:/tb_top/intf/RREADY; \
 			run -all" \
 		opt_tb_top &
+
+# ==============================================================================
+# 4b. Standalone SVA unit test (no UVM) - proves WLAST_MISSING_W_BEFORE_AW fires
+# ==============================================================================
+sva_unit:
+	@mkdir -p $(LOG_DIR)
+	@echo "[SVA-UNIT] Compiling axi4_sva + directed unit testbench..."
+	@vlib work
+	@vmap work work
+	vlog -sv -work work -timescale 1ns/1ps +incdir+$(SRC_DIR) \
+		$(SRC_DIR)/sva/axi4_sva.sv tb_sva_wlast_before_aw.sv \
+		-l $(LOG_DIR)/sva_unit_compile.log
+	@echo "[SVA-UNIT] Running (expect: 0 SVA errors in PHASE A, 1 in PHASE B)..."
+	vsim -c -work work tb_sva_wlast_before_aw \
+		-l $(LOG_DIR)/sva_unit_run.log \
+		-do "run -all; quit -f"
 
 # ==============================================================================
 # 5. Regression Harness (Supports parallel execution, e.g., 'make -j8 regress')

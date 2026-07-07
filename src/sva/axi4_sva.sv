@@ -1,23 +1,11 @@
-//==============================================================================
+//=============================================================================
 // File        : axi4_sva.sv
 // Project     : AXI4 VIP
 // Author      : Huy Le
 // Description : AXI4 protocol assertions (SVA) module.
 //               Checks compliance with ARM AMBA AXI4 specification.
 //               Designed to be bound to axi4_if via SystemVerilog `bind`.
-//
-// Assertion Categories:
-//   1. Reset behavior       (VALID signals must be low during reset)
-//   2. Handshake stability  (VALID must stay high until READY)
-//   3. Payload stability    (signals must be stable while VALID && !READY)
-//   4. X/Z checks           (control signals must not be unknown)
-//   5. Burst protocol       (WLAST/RLAST correctness using FIFO tracking)
-//   6. Burst type           (AWBURST/ARBURST invalid values)
-//   7. Burst size           (AWSIZE/ARSIZE width check)
-//   8. Wrap burst           (WRAP ARLEN/AWLEN constraints)
-//   9. Fixed burst          (FIXED ARLEN/AWLEN constraints)
-//   10. Response value      (BRESP/RRESP validity checks)
-//==============================================================================
+//=============================================================================
 
 `timescale 1ns/1ps
 
@@ -79,30 +67,30 @@ module axi4_sva #(
     input logic                     RREADY
 );
 
-    // =========================================================================
-    //  Local parameters
-    // =========================================================================
+    //-------------------------------------------------------------------------
+    // Local parameters
+    //-------------------------------------------------------------------------
     localparam STRB_WIDTH = DATA_WIDTH / 8;
 
-    // =========================================================================
-    //  Internal state tracking
-    // =========================================================================
+    //-------------------------------------------------------------------------
+    // Internal state tracking
+    //-------------------------------------------------------------------------
     bit          rst_seen;       // True after first posedge clk during reset
 
     // Track reset assertion - set at posedge clk when rst_n is low.
     // (Cannot use negedge rst_n because rst_n starts at 0 as a `bit`,
-    //  so there is no falling edge to trigger on.)
+    // so there is no falling edge to trigger on.)
     always @(posedge clk) begin
         if (!rst_n)
             rst_seen <= 1'b1;
     end
 
-    // =========================================================================
-    //  1. RESET CHECKS
-    //     All VALID signals must be de-asserted during reset (AXI4 spec)
-    //     Only checked after reset has been asserted at least once (rst_seen)
-    //     to avoid false positives from initial bit=0 state.
-    // =========================================================================
+    //-------------------------------------------------------------------------
+    // RESET CHECKS
+    //    All VALID signals must be de-asserted during reset
+    //    Only checked after reset has been asserted at least once (rst_seen)
+    //    to avoid false positives from initial bit=0 state.
+    //-------------------------------------------------------------------------
 
     property p_reset_awvalid;
         @(posedge clk) (rst_seen && !rst_n) |-> !AWVALID;
@@ -139,10 +127,10 @@ module axi4_sva #(
     RESET_RVALID  : assert property (p_reset_rvalid)
         else $error("[SVA] RVALID asserted during reset");
 
-    // =========================================================================
-    //  2. HANDSHAKE STABILITY
-    //     VALID must remain asserted until READY (AXI4 spec)
-    // =========================================================================
+    //-------------------------------------------------------------------------
+    // HANDSHAKE STABILITY
+    //    VALID must remain asserted until READY
+    //-------------------------------------------------------------------------
 
     // AW Channel
     property p_awvalid_stable;
@@ -189,11 +177,11 @@ module axi4_sva #(
     RVALID_STABLE  : assert property (p_rvalid_stable)
         else $error("[SVA] RVALID de-asserted before RREADY handshake");
 
-    // =========================================================================
-    //  3. PAYLOAD STABILITY - signals must be stable while VALID && !READY
-    //     The source must not change the information it is signaling
-    //     while VALID is asserted (AXI4 spec)
-    // =========================================================================
+    //-------------------------------------------------------------------------
+    // PAYLOAD STABILITY - signals must be stable while VALID && !READY
+    //    The source must not change the information it is signaling
+    //    while VALID is asserted 
+    //-------------------------------------------------------------------------
 
     // AW Channel payload
     property p_aw_payload_stable;
@@ -206,10 +194,10 @@ module axi4_sva #(
     endproperty
 
     // W Channel payload
-    //   Only check stability when WVALID was high AND no handshake occurred
-    //   on the previous cycle. After a handshake (WVALID && WREADY), the
-    //   master may legitimately change data for the next beat while keeping
-    //   WVALID asserted.
+    //  Only check stability when WVALID was high AND no handshake occurred
+    //  on the previous cycle. After a handshake (WVALID && WREADY), the
+    //  master may legitimately change data for the next beat while keeping
+    //  WVALID asserted.
     property p_w_payload_stable;
         @(posedge clk) disable iff (!rst_n)
         (WVALID && !WREADY && $past(WVALID) && !$past(WREADY)) |=>
@@ -255,9 +243,9 @@ module axi4_sva #(
     R_PAYLOAD_STABLE  : assert property (p_r_payload_stable)
         else $error("[SVA] R channel payload changed while RVALID && !RREADY");
 
-    // =========================================================================
-    //  4. X/Z CHECKS - Control signals must not be unknown when active
-    // =========================================================================
+    //-------------------------------------------------------------------------
+    // X/Z CHECKS - Control signals must not be unknown when active
+    //-------------------------------------------------------------------------
 
     property p_awvalid_known;
         @(posedge clk) disable iff (!rst_n)
@@ -339,11 +327,11 @@ module axi4_sva #(
     RREADY_KNOWN  : assert property (p_rready_known)
         else $error("[SVA] RREADY is X or Z");
 
-    // =========================================================================
-    //  5. BURST PROTOCOL - WLAST / RLAST correctness (Queue-based)
-    //     Checks correct beat count and WLAST/RLAST positioning using FIFOs
-    //     to support out-of-order handshakes and pipelined transactions.
-    // =========================================================================
+    //-------------------------------------------------------------------------
+    // BURST PROTOCOL - WLAST / RLAST correctness (Queue-based)
+    //    Checks correct beat count and WLAST/RLAST positioning using FIFOs
+    //    to support out-of-order handshakes and pipelined transactions.
+    //-------------------------------------------------------------------------
 
     // Queues and beat counters
     int unsigned w_beat_cnt;     // Counts W beats within a burst
@@ -369,6 +357,15 @@ module axi4_sva #(
                         else $error("[SVA] WLAST asserted on beat %0d but AWLEN is %0d (W before AW)", 
                                     actual_w_len, AWLEN);
                 end else begin
+                    // W started before AW and still in progress (no WLAST yet):
+                    // retroactively check the beats already accepted for this
+                    // burst - AWLEN must be >= w_beat_cnt, else a beat that
+                    // should have carried WLAST already passed.
+                    if (aw_len_fifo.size() == 0 && w_beat_cnt > 0) begin
+                        WLAST_MISSING_W_BEFORE_AW : assert (AWLEN >= w_beat_cnt)
+                            else $error("[SVA] W accepted %0d beats without WLAST before AW arrived, but AWLEN=%0d (WLAST missing/late, W before AW)",
+                                        w_beat_cnt, AWLEN);
+                    end
                     aw_len_fifo.push_back(AWLEN);
                 end
             end
@@ -422,12 +419,12 @@ module axi4_sva #(
             ar_len_fifo.delete();
             r_beat_cnt.delete();
         end else begin
-            // 1. Capture ARLEN when AR handshakes
+            // Capture ARLEN when AR handshakes
             if (ARVALID && ARREADY) begin
                 ar_len_fifo[ARID].push_back(ARLEN);
             end
 
-            // 2. R handshake checks
+            // R handshake checks
             if (RVALID && RREADY) begin
                 logic [ID_WIDTH-1:0] cur_rid;
                 cur_rid = RID;
@@ -465,9 +462,9 @@ module axi4_sva #(
         end
     end
 
-    // =========================================================================
-    //  6. BURST TYPE - AWBURST / ARBURST must not be reserved value (2'b11)
-    // =========================================================================
+    //-------------------------------------------------------------------------
+    // BURST TYPE - AWBURST / ARBURST must not be reserved value (2'b11)
+    //-------------------------------------------------------------------------
 
     property p_awburst_valid;
         @(posedge clk) disable iff (!rst_n)
@@ -485,10 +482,10 @@ module axi4_sva #(
     ARBURST_VALID : assert property (p_arburst_valid)
         else $error("[SVA] ARBURST=2'b11 is reserved and illegal");
 
-    // =========================================================================
-    //  7. BURST SIZE - must not exceed data bus width
-    //     2^AWSIZE <= DATA_WIDTH/8
-    // =========================================================================
+    //-------------------------------------------------------------------------
+    // BURST SIZE - must not exceed data bus width
+    //    2^AWSIZE <= DATA_WIDTH/8
+    //-------------------------------------------------------------------------
 
     property p_awsize_valid;
         @(posedge clk) disable iff (!rst_n)
@@ -508,9 +505,9 @@ module axi4_sva #(
         else $error("[SVA] ARSIZE exceeds data bus width (2^%0d > %0d bytes)",
                     ARSIZE, DATA_WIDTH / 8);
 
-    // =========================================================================
-    //  8. WRAP BURST - length must be 2, 4, 8, or 16 (LEN = 1, 3, 7, 15)
-    // =========================================================================
+    //-------------------------------------------------------------------------
+    // WRAP BURST - length must be 2, 4, 8, or 16 (LEN = 1, 3, 7, 15)
+    //-------------------------------------------------------------------------
 
     property p_wrap_aw_len;
         @(posedge clk) disable iff (!rst_n)
@@ -530,9 +527,9 @@ module axi4_sva #(
     WRAP_AR_LEN : assert property (p_wrap_ar_len)
         else $error("[SVA] WRAP burst ARLEN=%0d is invalid (must be 1,3,7,15)", ARLEN);
 
-    // =========================================================================
-    //  9. FIXED BURST - length must not exceed 16 (LEN <= 15)
-    // =========================================================================
+    //-------------------------------------------------------------------------
+    // FIXED BURST - length must not exceed 16 (LEN <= 15)
+    //-------------------------------------------------------------------------
 
     property p_fixed_aw_len;
         @(posedge clk) disable iff (!rst_n)
@@ -550,11 +547,11 @@ module axi4_sva #(
     FIXED_AR_LEN : assert property (p_fixed_ar_len)
         else $error("[SVA] FIXED burst ARLEN=%0d exceeds maximum of 15", ARLEN);
 
-    // =========================================================================
-    //  10. RESPONSE VALUE - BRESP/RRESP must be valid (0-3 is always valid,
-    //      but EXOKAY is only valid for exclusive accesses)
-    //      Basic check: BRESP/RRESP must not be X/Z at handshake
-    // =========================================================================
+    //-------------------------------------------------------------------------
+    // RESPONSE VALUE - BRESP/RRESP must be valid
+    //     0-3 is always valid, but EXOKAY is only valid for exclusive accesses
+    //     Basic check: BRESP/RRESP must not be X/Z at handshake
+    //-------------------------------------------------------------------------
 
     property p_bresp_known;
         @(posedge clk) disable iff (!rst_n)
@@ -572,11 +569,11 @@ module axi4_sva #(
     RRESP_KNOWN : assert property (p_rresp_known)
         else $error("[SVA] RRESP is X or Z at handshake");
 
-    // =========================================================================
-    //  11. READ INTERLEAVING CONSTRAINT - No read data interleaving is allowed.
-    //      Once RVALID & RREADY handshakes, all beats must be for the same RID
-    //      until RLAST is asserted and handshaked.
-    // =========================================================================
+    //-------------------------------------------------------------------------
+    // READ INTERLEAVING CONSTRAINT - No read data interleaving is allowed
+    //     Once RVALID & RREADY handshakes, all beats must be for the same RID
+    //     until RLAST is asserted and handshaked.
+    //-------------------------------------------------------------------------
     logic                    active_r_burst;
     logic [ID_WIDTH-1:0]     active_rid;
 
@@ -599,9 +596,9 @@ module axi4_sva #(
         end
     end
 
-    // =========================================================================
-    //  COVER PROPERTIES - Track protocol scenarios for functional coverage
-    // =========================================================================
+    //-------------------------------------------------------------------------
+    // COVER PROPERTIES - Track protocol scenarios for functional coverage
+    //-------------------------------------------------------------------------
 
     // Handshake coverage
     AW_HANDSHAKE_COV : cover property (@(posedge clk) disable iff (!rst_n) AWVALID && AWREADY);

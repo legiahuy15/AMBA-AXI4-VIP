@@ -32,6 +32,7 @@ package axi4_test_pkg;
     `include "test/axi4_strobe_test.sv"
     `include "test/axi4_burst_sweep_test.sv"
     `include "test/axi4_wr_order_demo_test.sv"
+    `include "test/axi4_wlast_before_aw_test.sv"
     `include "test/axi4_narrow_burst_test.sv"
     `include "test/axi4_error_response_test.sv"
     `include "test/axi4_all_burst_type_test.sv"
