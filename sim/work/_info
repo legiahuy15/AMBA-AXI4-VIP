@@ -10,7 +10,7 @@ cModel Technology
 Z0 d/home/hle/axi4_vip/sim
 Yaxi4_if
 Z1 DXx6 sv_std 3 std 0 22 AD7iAPLo6nTIKk<N0eo=D3
-!s110 1783399087
+!s110 1783414217
 !i10b 1
 !s100 Ug8M7h8i6:81BfEKN=kCm0
 ImdZV:j9ma7=C@HDgGKd>20
@@ -18,7 +18,7 @@ Z2 VDg1SIo80bB@j0V0VzS_@n1
 !s105 axi4_if_sv_unit
 S1
 R0
-Z3 w1783399043
+Z3 w1783414169
 8../src/axi4_if.sv
 F../src/axi4_if.sv
 L0 16
@@ -26,8 +26,8 @@ Z4 OL;L;10.6b;65
 r1
 !s85 0
 31
-Z5 !s108 1783399087.000000
-Z6 !s107 ../src/test/axi4_backpressure_test.sv|../src/test/axi4_addr_integrity_test.sv|../src/test/axi4_data_integrity_test.sv|../src/test/axi4_back_to_back_test.sv|../src/test/axi4_all_burst_type_test.sv|../src/test/axi4_error_response_test.sv|../src/test/axi4_narrow_burst_test.sv|../src/test/axi4_wr_order_demo_test.sv|../src/test/axi4_burst_sweep_test.sv|../src/test/axi4_strobe_test.sv|../src/test/axi4_cache_prot_test.sv|../src/test/axi4_unaligned_test.sv|../src/test/axi4_reset_mid_burst_test.sv|../src/test/axi4_exclusive_fail_test.sv|../src/test/axi4_illegal_exclusive_test.sv|../src/test/axi4_exclusive_test.sv|../src/test/axi4_out_of_order_test.sv|../src/test/axi4_outstanding_test.sv|../src/test/axi4_random_test.sv|../src/test/axi4_sanity_test.sv|../src/test/axi4_base_test.sv|../src/env/axi4_vip_env.sv|../src/env/axi4_vip_env_config.sv|../src/env/axi4_scoreboard.sv|../src/env/axi4_coverage.sv|../src/seq/axi4_addr_data_integrity_seq.sv|../src/seq/axi4_data_integrity_seq.sv|../src/seq/axi4_back_to_back_seq.sv|../src/seq/axi4_all_burst_type_seq.sv|../src/seq/axi4_error_response_seq.sv|../src/seq/axi4_narrow_burst_seq.sv|../src/seq/axi4_wr_order_demo_seq.sv|../src/seq/axi4_burst_sweep_seq.sv|../src/seq/axi4_strobe_pattern_seq.sv|../src/seq/axi4_cache_prot_seq.sv|../src/seq/axi4_unaligned_seq.sv|../src/seq/axi4_reset_traffic_seq.sv|../src/seq/axi4_exclusive_fail_seq.sv|../src/seq/axi4_illegal_exclusive_seq.sv|../src/seq/axi4_exclusive_seq.sv|../src/seq/axi4_out_of_order_seq.sv|../src/seq/axi4_outstanding_seq.sv|../src/seq/axi4_random_seq.sv|../src/seq/axi4_write_read_back_seq.sv|../src/seq/axi4_single_read_seq.sv|../src/seq/axi4_single_write_seq.sv|../src/seq/axi4_base_sequence.sv|../src/slv/axi4_slave_agent.sv|../src/slv/axi4_slave_monitor.sv|../src/slv/axi4_slave_driver.sv|../src/slv/axi4_slave_sequencer.sv|../src/mst/axi4_master_agent.sv|../src/mst/axi4_master_monitor.sv|../src/mst/axi4_master_driver.sv|../src/mst/axi4_master_sequencer.sv|../src/cfg/axi4_transaction.sv|../src/cfg/axi4_agent_config.sv|../src/cfg/axi4_types.sv|/cadtools/mentor/Questa_10.6b/questasim/uvm-1.1d/../verilog_src/uvm-1.1d/src/macros/uvm_deprecated_defines.svh|/cadtools/mentor/Questa_10.6b/questasim/uvm-1.1d/../verilog_src/uvm-1.1d/src/macros/uvm_reg_defines.svh|/cadtools/mentor/Questa_10.6b/questasim/uvm-1.1d/../verilog_src/uvm-1.1d/src/macros/uvm_callback_defines.svh|/cadtools/mentor/Questa_10.6b/questasim/uvm-1.1d/../verilog_src/uvm-1.1d/src/macros/uvm_sequence_defines.svh|/cadtools/mentor/Questa_10.6b/questasim/uvm-1.1d/../verilog_src/uvm-1.1d/src/tlm1/uvm_tlm_imps.svh|/cadtools/mentor/Questa_10.6b/questasim/uvm-1.1d/../verilog_src/uvm-1.1d/src/macros/uvm_tlm_defines.svh|/cadtools/mentor/Questa_10.6b/questasim/uvm-1.1d/../verilog_src/uvm-1.1d/src/macros/uvm_printer_defines.svh|/cadtools/mentor/Questa_10.6b/questasim/uvm-1.1d/../verilog_src/uvm-1.1d/src/macros/uvm_object_defines.svh|/cadtools/mentor/Questa_10.6b/questasim/uvm-1.1d/../verilog_src/uvm-1.1d/src/macros/uvm_phase_defines.svh|/cadtools/mentor/Questa_10.6b/questasim/uvm-1.1d/../verilog_src/uvm-1.1d/src/macros/uvm_message_defines.svh|/cadtools/mentor/Questa_10.6b/questasim/uvm-1.1d/../verilog_src/uvm-1.1d/src/macros/uvm_version_defines.svh|/cadtools/mentor/Questa_10.6b/questasim/uvm-1.1d/../verilog_src/uvm-1.1d/src/uvm_macros.svh|../src/tb_top.sv|../src/sva/axi4_sva.sv|../src/axi4_test_pkg.sv|../src/axi4_pkg.sv|../src/axi4_if.sv|
+Z5 !s108 1783414217.000000
+Z6 !s107 ../src/test/axi4_backpressure_test.sv|../src/test/axi4_addr_integrity_test.sv|../src/test/axi4_data_integrity_test.sv|../src/test/axi4_back_to_back_test.sv|../src/test/axi4_all_burst_type_test.sv|../src/test/axi4_error_response_test.sv|../src/test/axi4_narrow_burst_test.sv|../src/test/axi4_wlast_before_aw_test.sv|../src/test/axi4_wr_order_demo_test.sv|../src/test/axi4_burst_sweep_test.sv|../src/test/axi4_strobe_test.sv|../src/test/axi4_cache_prot_test.sv|../src/test/axi4_unaligned_test.sv|../src/test/axi4_reset_mid_burst_test.sv|../src/test/axi4_exclusive_fail_test.sv|../src/test/axi4_illegal_exclusive_test.sv|../src/test/axi4_exclusive_test.sv|../src/test/axi4_out_of_order_test.sv|../src/test/axi4_outstanding_test.sv|../src/test/axi4_random_test.sv|../src/test/axi4_sanity_test.sv|../src/test/axi4_base_test.sv|../src/env/axi4_vip_env.sv|../src/env/axi4_vip_env_config.sv|../src/env/axi4_scoreboard.sv|../src/env/axi4_coverage.sv|../src/seq/axi4_addr_data_integrity_seq.sv|../src/seq/axi4_data_integrity_seq.sv|../src/seq/axi4_back_to_back_seq.sv|../src/seq/axi4_all_burst_type_seq.sv|../src/seq/axi4_error_response_seq.sv|../src/seq/axi4_narrow_burst_seq.sv|../src/seq/axi4_wlast_before_aw_seq.sv|../src/seq/axi4_wr_order_demo_seq.sv|../src/seq/axi4_burst_sweep_seq.sv|../src/seq/axi4_strobe_pattern_seq.sv|../src/seq/axi4_cache_prot_seq.sv|../src/seq/axi4_unaligned_seq.sv|../src/seq/axi4_reset_traffic_seq.sv|../src/seq/axi4_exclusive_fail_seq.sv|../src/seq/axi4_illegal_exclusive_seq.sv|../src/seq/axi4_exclusive_seq.sv|../src/seq/axi4_out_of_order_seq.sv|../src/seq/axi4_outstanding_seq.sv|../src/seq/axi4_random_seq.sv|../src/seq/axi4_write_read_back_seq.sv|../src/seq/axi4_single_read_seq.sv|../src/seq/axi4_single_write_seq.sv|../src/seq/axi4_base_sequence.sv|../src/slv/axi4_slave_agent.sv|../src/slv/axi4_slave_monitor.sv|../src/slv/axi4_slave_driver.sv|../src/slv/axi4_slave_sequencer.sv|../src/mst/axi4_master_agent.sv|../src/mst/axi4_master_monitor.sv|../src/mst/axi4_master_driver.sv|../src/mst/axi4_master_sequencer.sv|../src/cfg/axi4_transaction.sv|../src/cfg/axi4_agent_config.sv|../src/cfg/axi4_types.sv|/cadtools/mentor/Questa_10.6b/questasim/uvm-1.1d/../verilog_src/uvm-1.1d/src/macros/uvm_deprecated_defines.svh|/cadtools/mentor/Questa_10.6b/questasim/uvm-1.1d/../verilog_src/uvm-1.1d/src/macros/uvm_reg_defines.svh|/cadtools/mentor/Questa_10.6b/questasim/uvm-1.1d/../verilog_src/uvm-1.1d/src/macros/uvm_callback_defines.svh|/cadtools/mentor/Questa_10.6b/questasim/uvm-1.1d/../verilog_src/uvm-1.1d/src/macros/uvm_sequence_defines.svh|/cadtools/mentor/Questa_10.6b/questasim/uvm-1.1d/../verilog_src/uvm-1.1d/src/tlm1/uvm_tlm_imps.svh|/cadtools/mentor/Questa_10.6b/questasim/uvm-1.1d/../verilog_src/uvm-1.1d/src/macros/uvm_tlm_defines.svh|/cadtools/mentor/Questa_10.6b/questasim/uvm-1.1d/../verilog_src/uvm-1.1d/src/macros/uvm_printer_defines.svh|/cadtools/mentor/Questa_10.6b/questasim/uvm-1.1d/../verilog_src/uvm-1.1d/src/macros/uvm_object_defines.svh|/cadtools/mentor/Questa_10.6b/questasim/uvm-1.1d/../verilog_src/uvm-1.1d/src/macros/uvm_phase_defines.svh|/cadtools/mentor/Questa_10.6b/questasim/uvm-1.1d/../verilog_src/uvm-1.1d/src/macros/uvm_message_defines.svh|/cadtools/mentor/Questa_10.6b/questasim/uvm-1.1d/../verilog_src/uvm-1.1d/src/macros/uvm_version_defines.svh|/cadtools/mentor/Questa_10.6b/questasim/uvm-1.1d/../verilog_src/uvm-1.1d/src/uvm_macros.svh|../src/tb_top.sv|../src/sva/axi4_sva.sv|../src/axi4_test_pkg.sv|../src/axi4_pkg.sv|../src/axi4_if.sv|
 Z7 !s90 -sv|-work|work|-timescale|1ns/1ps|+incdir+../src|-l|./report/logs/compile.log|-cover|sbcet|../src/axi4_if.sv|../src/axi4_pkg.sv|../src/axi4_test_pkg.sv|../src/sva/axi4_sva.sv|../src/tb_top.sv|
 !i113 0
 Z8 !s102 -cover sbcet
@@ -38,11 +38,11 @@ Xaxi4_pkg
 Z12 !s115 axi4_if
 R1
 Z13 DXx6 mtiUvm 7 uvm_pkg 0 22 oMKUklN?>LE6@MJe7=2><1
-Z14 !s110 1783399088
+Z14 !s110 1783414218
 !i10b 1
-!s100 gBCj`[m@S14zNEC312[9l0
-I]D<;^e@KIAAe15=FbWQdH0
-V]D<;^e@KIAAe15=FbWQdH0
+!s100 JoXP=UIeFKz]NdeZGYL630
+IcVMfcKEMKA[olL23h@mo22
+VcVMfcKEMKA[olL23h@mo22
 S1
 R0
 R3
@@ -87,6 +87,7 @@ F../src/seq/axi4_cache_prot_seq.sv
 F../src/seq/axi4_strobe_pattern_seq.sv
 F../src/seq/axi4_burst_sweep_seq.sv
 F../src/seq/axi4_wr_order_demo_seq.sv
+F../src/seq/axi4_wlast_before_aw_seq.sv
 F../src/seq/axi4_narrow_burst_seq.sv
 F../src/seq/axi4_error_response_seq.sv
 F../src/seq/axi4_all_burst_type_seq.sv
@@ -114,8 +115,8 @@ vaxi4_sva
 R1
 R14
 !i10b 1
-!s100 m^0encoWTc=IJg;>R@l`@1
-I3h;_<7Bd>:YE0?WQb72W60
+!s100 7AROGA]IkaVdM_lodk=zJ3
+IODSQl?@7H@XPfkaQ[Azdl0
 R2
 !s105 axi4_sva_sv_unit
 S1
@@ -123,7 +124,7 @@ R0
 R3
 8../src/sva/axi4_sva.sv
 F../src/sva/axi4_sva.sv
-L0 24
+Z27 L0 12
 R4
 r1
 !s85 0
@@ -140,12 +141,12 @@ Xaxi4_test_pkg
 R12
 R1
 R13
-Z27 DXx4 work 8 axi4_pkg 0 22 ]D<;^e@KIAAe15=FbWQdH0
+Z28 DXx4 work 8 axi4_pkg 0 22 cVMfcKEMKA[olL23h@mo22
 R14
 !i10b 1
-!s100 7k<TdTCY2Y5=AhjU>2X331
-I1oMB=7dSIJaXiPmi36zn<3
-V1oMB=7dSIJaXiPmi36zn<3
+!s100 Z?8m=bT0@h:Q6bUZgcjeU0
+Ino=Ij3KkX9h^a:fcIlUDT3
+Vno=Ij3KkX9h^a:fcIlUDT3
 S1
 R0
 R3
@@ -177,6 +178,7 @@ F../src/test/axi4_cache_prot_test.sv
 F../src/test/axi4_strobe_test.sv
 F../src/test/axi4_burst_sweep_test.sv
 F../src/test/axi4_wr_order_demo_test.sv
+F../src/test/axi4_wlast_before_aw_test.sv
 F../src/test/axi4_narrow_burst_test.sv
 F../src/test/axi4_error_response_test.sv
 F../src/test/axi4_all_burst_type_test.sv
@@ -184,7 +186,7 @@ F../src/test/axi4_back_to_back_test.sv
 F../src/test/axi4_data_integrity_test.sv
 F../src/test/axi4_addr_integrity_test.sv
 F../src/test/axi4_backpressure_test.sv
-L0 12
+R27
 R4
 r1
 !s85 0
@@ -198,8 +200,8 @@ R9
 R10
 R11
 Topt_tb_top
-!s110 1783399089
-VcVjSY68aoHfX9GYEWNDob1
+R14
+VFYog3Ez?8@RT427zjDjMX1
 04 6 4 work tb_top fast 0
 R8
 o+acc -work work -cover sbcet
@@ -209,17 +211,17 @@ OL;O;10.6b;65
 vtb_top
 R1
 R13
-R27
-DXx4 work 13 axi4_test_pkg 0 22 1oMB=7dSIJaXiPmi36zn<3
+R28
+DXx4 work 13 axi4_test_pkg 0 22 no=Ij3KkX9h^a:fcIlUDT3
 R14
 !i10b 1
 !s100 <UGzcJgM=;HU[HZ5aR2Q80
-IVOhYKZ]ioD:bn9:6mdR;z1
+I[YY81Ni5QeATY51E@NhYo0
 R2
 !s105 tb_top_sv_unit
 S1
 R0
-R3
+w1783399043
 8../src/tb_top.sv
 F../src/tb_top.sv
 R15
