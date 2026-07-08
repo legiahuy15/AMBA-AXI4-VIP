@@ -49,10 +49,12 @@
 ../src/test/axi4_cache_prot_test.sv
 ../src/test/axi4_data_integrity_test.sv
 ../src/test/axi4_error_response_test.sv
+../src/test/axi4_exclusive_demo_test.sv
 ../src/test/axi4_exclusive_fail_test.sv
 ../src/test/axi4_exclusive_test.sv
 ../src/test/axi4_illegal_exclusive_test.sv
 ../src/test/axi4_narrow_burst_test.sv
+../src/test/axi4_ooo_demo_test.sv
 ../src/test/axi4_out_of_order_test.sv
 ../src/test/axi4_outstanding_test.sv
 ../src/test/axi4_random_test.sv
