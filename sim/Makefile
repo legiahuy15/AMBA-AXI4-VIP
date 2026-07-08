@@ -51,7 +51,8 @@ TEST_LIST     ?= axi4_sanity_test axi4_random_test axi4_outstanding_test \
                  axi4_error_response_test axi4_all_burst_type_test \
                  axi4_back_to_back_test \
                  axi4_data_integrity_test \
-                 axi4_addr_integrity_test axi4_backpressure_test
+                 axi4_addr_integrity_test axi4_backpressure_test \
+                 axi4_exclusive_demo_test axi4_ooo_demo_test
 
 # ==============================================================================
 # 3. Simulator Flags & Conditional Options

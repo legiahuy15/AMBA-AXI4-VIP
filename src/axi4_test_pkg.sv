@@ -41,6 +41,10 @@ package axi4_test_pkg;
     `include "test/axi4_addr_integrity_test.sv"
     `include "test/axi4_backpressure_test.sv"
 
+    // Demo tests - minimal, deterministic traffic for waveform capture
+    `include "test/axi4_exclusive_demo_test.sv"
+    `include "test/axi4_ooo_demo_test.sv"
+
 endpackage : axi4_test_pkg
 
 `endif // AXI4_TEST_PKG_INCLUDED_

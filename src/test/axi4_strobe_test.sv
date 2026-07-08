@@ -24,6 +24,15 @@ class axi4_strobe_test extends axi4_base_test;
         `uvm_info(get_type_name(), "Starting write strobe patterns test", UVM_LOW)
 
         strb_seq = axi4_strobe_pattern_seq::type_id::create("strb_seq");
+        // Pin address and ID so every pattern writes to the SAME location:
+        // on the waveform AWADDR/AWID stay constant while WSTRB steps through
+        // 1111 -> 0000 -> walking-ones -> half-words. Deterministic and
+        // reproducible for report screenshots. Strobe-pattern coverage is
+        // unaffected (all patterns are still exercised).
+        strb_seq.addr_lo = 32'h0000_9000;
+        strb_seq.addr_hi = 32'h0000_9000;
+        strb_seq.id_lo   = 4'h9;
+        strb_seq.id_hi   = 4'h9;
         strb_seq.start(env.master_agent.sqr);
 
         // Drain time
