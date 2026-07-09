@@ -25,33 +25,38 @@ class axi4_ooo_demo_seq extends axi4_base_sequence;
     endfunction : new
 
     virtual task body();
-        axi4_transaction rds[6];
-
         `uvm_info(get_type_name(),
                   "Starting OOO demo sequence (6 single-beat reads, IDs 0-5)",
                   UVM_MEDIUM)
 
-        // Issue all 6 reads back-to-back WITHOUT waiting, so they are
-        // outstanding together and the slave can reorder their responses.
+        // One thread per read: each waits on its OWN done_event immediately
+        // after finish_item (same-thread, no event-race). All six are
+        // outstanding together, so the reorder-enabled slave returns their
+        // R responses out of order.
         for (int i = 0; i < 6; i++) begin
-            rds[i] = axi4_transaction::type_id::create($sformatf("ooo_rd_%0d", i));
-            start_item(rds[i]);
-            if (!rds[i].randomize() with {
-                dir   == AXI4_READ;
-                addr  == 32'h0000_1000 + (i * 32'h100);  // 0x1000..0x1500
-                id    == i[3:0];                          // distinct IDs 0..5
-                len   == 0;                               // single beat -> compact
-                size  == AXI4_SIZE_4B;
-                burst == AXI4_BURST_INCR;
-                lock  == AXI4_LOCK_NORMAL;
-            }) `uvm_fatal(get_type_name(),
-                          $sformatf("Randomization failed for OOO demo read #%0d", i))
-            finish_item(rds[i]);   // do NOT wait -> pipelined / outstanding
+            automatic int idx = i;
+            fork
+                begin
+                    axi4_transaction tr;
+                    tr = axi4_transaction::type_id::create($sformatf("ooo_rd_%0d", idx));
+                    start_item(tr);
+                    if (!tr.randomize() with {
+                        dir   == AXI4_READ;
+                        addr  == 32'h0000_1000 + (idx * 32'h100);  // 0x1000..0x1500
+                        id    == idx[3:0];                         // distinct IDs 0..5
+                        len   == 0;                                // single beat
+                        size  == AXI4_SIZE_4B;
+                        burst == AXI4_BURST_INCR;
+                        lock  == AXI4_LOCK_NORMAL;
+                    }) `uvm_fatal(get_type_name(),
+                                  $sformatf("Randomization failed for OOO demo read #%0d", idx))
+                    finish_item(tr);
+                    wait(tr.done_event.ev.triggered);   // wait in-thread -> no race
+                end
+            join_none
         end
 
-        // Wait for all responses (they may arrive out of order)
-        for (int i = 0; i < 6; i++)
-            wait(rds[i].done_event.ev.triggered);
+        wait fork;   // all six reads have returned (possibly out of order)
 
         `uvm_info(get_type_name(),
                   "OOO demo sequence complete (6/6 reads returned)", UVM_MEDIUM)
