@@ -3,9 +3,9 @@
 // Project     : AXI4 VIP
 // Author      : Huy Le
 // Description : Out-of-order demo test for waveform capture.
-//               Issues exactly 4 concurrent reads with distinct IDs (0..3)
+//               Issues exactly 6 concurrent reads with distinct IDs (0..5)
 //               into a reorder-enabled slave, with enough outstanding depth
-//               that all four are in flight together. The R channel returns
+//               that all six are in flight together. The R channel returns
 //               responses out-of-order (RID order != ARID order), while each
 //               burst stays non-interleaved (RID constant until RLAST).
 //               Minimal, deterministic traffic - ideal for report/slide
@@ -25,7 +25,7 @@ class axi4_ooo_demo_test extends axi4_base_test;
     endfunction : new
 
     // Small, fixed knobs for a clean waveform
-    int unsigned depth = 4;
+    int unsigned depth = 6;   // all 6 reads outstanding together
 
     // =========================================================================
     // Build phase - enable slave read reordering BEFORE env/agent/drv build
@@ -39,14 +39,14 @@ class axi4_ooo_demo_test extends axi4_base_test;
     endfunction : build_phase
 
     // =========================================================================
-    // Run phase - 4 single-beat reads, IDs 0..3, no writes
+    // Run phase - 6 single-beat reads, IDs 0..5, no writes
     // =========================================================================
     task run_phase(uvm_phase phase);
         axi4_ooo_demo_seq ooo_seq;
         phase.raise_objection(this, "axi4_ooo_demo_test: starting");
 
         `uvm_info(get_type_name(),
-                  "Starting OOO demo test (4 single-beat reads, IDs 0..3)",
+                  "Starting OOO demo test (6 single-beat reads, IDs 0..5)",
                   UVM_LOW)
 
         ooo_seq = axi4_ooo_demo_seq::type_id::create("ooo_seq");
