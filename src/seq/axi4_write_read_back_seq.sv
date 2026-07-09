@@ -49,6 +49,7 @@ class axi4_write_read_back_seq extends axi4_base_sequence;
             len   == local::len;
             size  == local::size;
             burst == local::burst;
+            lock  == AXI4_LOCK_NORMAL;   // read-back integrity requires the write to commit
             id    inside {[id_lo : id_hi]};
         }) `uvm_fatal(get_type_name(), "Randomization failed for write transaction")
 
@@ -70,6 +71,7 @@ class axi4_write_read_back_seq extends axi4_base_sequence;
             len   == wr_tr.len;
             size  == wr_tr.size;
             burst == wr_tr.burst;
+            lock  == AXI4_LOCK_NORMAL;   // normal read-back (match the write)
             id    inside {[id_lo : id_hi]};
         }) `uvm_fatal(get_type_name(), "Randomization failed for read-back transaction")
 

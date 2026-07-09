@@ -52,6 +52,7 @@ class axi4_error_response_seq extends axi4_base_sequence;
             len   == 0;                // Single beat
             size  == AXI4_SIZE_4B;
             burst == AXI4_BURST_INCR;
+            lock  == AXI4_LOCK_NORMAL;
             id    == 4'h0;
         }) `uvm_fatal(get_type_name(), "Randomization failed for OKAY write")
         finish_item(tr);
@@ -69,6 +70,7 @@ class axi4_error_response_seq extends axi4_base_sequence;
             len   == 0;
             size  == AXI4_SIZE_4B;
             burst == AXI4_BURST_INCR;
+            lock  == AXI4_LOCK_NORMAL;
             id    == 4'h0;
         }) `uvm_fatal(get_type_name(), "Randomization failed for OKAY read")
         finish_item(tr);
@@ -89,6 +91,7 @@ class axi4_error_response_seq extends axi4_base_sequence;
             len   == 0;
             size  == AXI4_SIZE_4B;
             burst == AXI4_BURST_INCR;
+            lock  == AXI4_LOCK_NORMAL;
             id    == 4'hA;
         }) `uvm_fatal(get_type_name(), "Randomization failed for SLVERR write")
         finish_item(tr);
@@ -106,6 +109,7 @@ class axi4_error_response_seq extends axi4_base_sequence;
             len   == 0;
             size  == AXI4_SIZE_4B;
             burst == AXI4_BURST_INCR;
+            lock  == AXI4_LOCK_NORMAL;
             id    == 4'hA;
         }) `uvm_fatal(get_type_name(), "Randomization failed for SLVERR read")
         finish_item(tr);
@@ -126,6 +130,7 @@ class axi4_error_response_seq extends axi4_base_sequence;
             len   == 0;
             size  == AXI4_SIZE_4B;
             burst == AXI4_BURST_INCR;
+            lock  == AXI4_LOCK_NORMAL;
             id    == 4'hF;
         }) `uvm_fatal(get_type_name(), "Randomization failed for DECERR write")
         finish_item(tr);
@@ -143,6 +148,7 @@ class axi4_error_response_seq extends axi4_base_sequence;
             len   == 0;
             size  == AXI4_SIZE_4B;
             burst == AXI4_BURST_INCR;
+            lock  == AXI4_LOCK_NORMAL;
             id    == 4'hF;
         }) `uvm_fatal(get_type_name(), "Randomization failed for DECERR read")
         finish_item(tr);

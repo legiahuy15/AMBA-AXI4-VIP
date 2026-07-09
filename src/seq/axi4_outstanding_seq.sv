@@ -68,6 +68,7 @@ class axi4_outstanding_seq extends axi4_base_sequence;
                             if (!wr_tr.randomize() with {
                                 dir   == AXI4_WRITE;
                                 addr  inside {[addr_lo : addr_hi]};
+                                lock  == AXI4_LOCK_NORMAL;
                                 id    inside {[id_lo   : id_hi]};
                             }) `uvm_fatal(get_type_name(), $sformatf("Randomization failed for write transaction #%0d", idx))
 
@@ -107,6 +108,7 @@ class axi4_outstanding_seq extends axi4_base_sequence;
                             if (!rd_tr.randomize() with {
                                 dir   == AXI4_READ;
                                 addr  inside {[addr_lo : addr_hi]};
+                                lock  == AXI4_LOCK_NORMAL;
                                 id    inside {[id_lo   : id_hi]};
                             }) `uvm_fatal(get_type_name(), $sformatf("Randomization failed for read transaction #%0d", idx))
 

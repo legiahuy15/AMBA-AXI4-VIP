@@ -62,6 +62,7 @@ class axi4_out_of_order_seq extends axi4_base_sequence;
                             if (!wr_tr.randomize() with {
                                 dir   == AXI4_WRITE;
                                 addr  inside {[addr_lo : addr_hi]};
+                                lock  == AXI4_LOCK_NORMAL;
                                 // Distribute IDs to maximize OOO possibility
                                 id    == ((id_lo + idx) % (id_hi - id_lo + 1));
                             }) `uvm_fatal(get_type_name(), $sformatf("Randomization failed for OOO write transaction #%0d", idx))
@@ -101,6 +102,7 @@ class axi4_out_of_order_seq extends axi4_base_sequence;
                             if (!rd_tr.randomize() with {
                                 dir   == AXI4_READ;
                                 addr  inside {[addr_lo : addr_hi]};
+                                lock  == AXI4_LOCK_NORMAL;
                                 // Distribute IDs to maximize OOO possibility
                                 id    == ((id_lo + idx) % (id_hi - id_lo + 1));
                             }) `uvm_fatal(get_type_name(), $sformatf("Randomization failed for OOO read transaction #%0d", idx))
