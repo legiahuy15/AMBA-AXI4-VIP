@@ -39,31 +39,21 @@ class axi4_ooo_demo_test extends axi4_base_test;
     endfunction : build_phase
 
     // =========================================================================
-    // Run phase - 4 concurrent reads, IDs 0..3, no writes
+    // Run phase - 4 single-beat reads, IDs 0..3, no writes
     // =========================================================================
     task run_phase(uvm_phase phase);
-        axi4_out_of_order_seq ooo_seq;
+        axi4_ooo_demo_seq ooo_seq;
         phase.raise_objection(this, "axi4_ooo_demo_test: starting");
 
         `uvm_info(get_type_name(),
-                  "Starting OOO demo test (4 reads, distinct IDs 0..3)",
+                  "Starting OOO demo test (4 single-beat reads, IDs 0..3)",
                   UVM_LOW)
 
-        ooo_seq = axi4_out_of_order_seq::type_id::create("ooo_seq");
-        ooo_seq.num_writes        = 0;
-        ooo_seq.num_reads         = 4;
-        ooo_seq.outstanding_depth = depth;
-        // Distinct IDs 0..3 (id = (id_lo + idx) % (id_hi - id_lo + 1))
-        ooo_seq.id_lo = 4'h0;
-        ooo_seq.id_hi = 4'h3;
-        // Keep addresses in the OKAY region so responses are clean
-        ooo_seq.addr_lo = 32'h0000_1000;
-        ooo_seq.addr_hi = 32'h0000_1FFF;
-
+        ooo_seq = axi4_ooo_demo_seq::type_id::create("ooo_seq");
         ooo_seq.start(env.master_agent.sqr);
 
         // Drain time - wait for all outstanding reads to complete
-        repeat (100) @(posedge env_cfg.master_vif.clk);
+        repeat (60) @(posedge env_cfg.master_vif.clk);
 
         `uvm_info(get_type_name(), "OOO demo test complete", UVM_LOW)
         phase.drop_objection(this, "axi4_ooo_demo_test: complete");
