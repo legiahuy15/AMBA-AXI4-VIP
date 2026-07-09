@@ -47,6 +47,7 @@ class axi4_all_burst_type_seq extends axi4_base_sequence;
             len   == 3;              // 4 beats
             size  == AXI4_SIZE_4B;
             burst == AXI4_BURST_FIXED;
+            lock  == AXI4_LOCK_NORMAL;
             id    == 4'h6;
             foreach (strb[i]) strb[i] == 4'b1111;
         }) `uvm_fatal(get_type_name(), "Randomization failed for FIXED write")
@@ -61,6 +62,7 @@ class axi4_all_burst_type_seq extends axi4_base_sequence;
             len   == 3;
             size  == AXI4_SIZE_4B;
             burst == AXI4_BURST_FIXED;
+            lock  == AXI4_LOCK_NORMAL;
             id    == 4'h6;
         }) `uvm_fatal(get_type_name(), "Randomization failed for FIXED read")
         finish_item(rd_tr);
@@ -83,6 +85,7 @@ class axi4_all_burst_type_seq extends axi4_base_sequence;
             len   == 3;              // 4 beats
             size  == AXI4_SIZE_4B;
             burst == AXI4_BURST_INCR;
+            lock  == AXI4_LOCK_NORMAL;
             id    == 4'h7;
             foreach (strb[i]) strb[i] == 4'b1111;
         }) `uvm_fatal(get_type_name(), "Randomization failed for INCR write")
@@ -97,6 +100,7 @@ class axi4_all_burst_type_seq extends axi4_base_sequence;
             len   == 3;
             size  == AXI4_SIZE_4B;
             burst == AXI4_BURST_INCR;
+            lock  == AXI4_LOCK_NORMAL;
             id    == 4'h7;
         }) `uvm_fatal(get_type_name(), "Randomization failed for INCR read")
         finish_item(rd_tr);
@@ -120,6 +124,7 @@ class axi4_all_burst_type_seq extends axi4_base_sequence;
             len   == 3;                // 4 beats (valid for WRAP)
             size  == AXI4_SIZE_4B;
             burst == AXI4_BURST_WRAP;
+            lock  == AXI4_LOCK_NORMAL;
             id    == 4'h8;
             foreach (strb[i]) strb[i] == 4'b1111;
         }) `uvm_fatal(get_type_name(), "Randomization failed for WRAP write")
@@ -134,6 +139,7 @@ class axi4_all_burst_type_seq extends axi4_base_sequence;
             len   == 3;
             size  == AXI4_SIZE_4B;
             burst == AXI4_BURST_WRAP;
+            lock  == AXI4_LOCK_NORMAL;
             id    == 4'h8;
         }) `uvm_fatal(get_type_name(), "Randomization failed for WRAP read")
         finish_item(rd_tr);

@@ -48,6 +48,7 @@ class axi4_wr_order_demo_seq extends axi4_base_sequence;
             len      == 3;              // 4-beat burst
             size     == AXI4_SIZE_4B;
             burst    == AXI4_BURST_INCR;
+            lock     == AXI4_LOCK_NORMAL;
             id       == 4'h1;
             foreach (strb[i]) strb[i] == 4'b1111;
         }) `uvm_fatal(get_type_name(), "Randomization failed for PARALLEL write")
@@ -74,6 +75,7 @@ class axi4_wr_order_demo_seq extends axi4_base_sequence;
             len      == 3;              // 4-beat burst
             size     == AXI4_SIZE_4B;
             burst    == AXI4_BURST_INCR;
+            lock     == AXI4_LOCK_NORMAL;
             id       == 4'h2;
             foreach (strb[i]) strb[i] == 4'b1111;
         }) `uvm_fatal(get_type_name(), "Randomization failed for AW_BEFORE_W write")
@@ -99,6 +101,7 @@ class axi4_wr_order_demo_seq extends axi4_base_sequence;
             len      == 3;              // 4-beat burst
             size     == AXI4_SIZE_4B;
             burst    == AXI4_BURST_INCR;
+            lock     == AXI4_LOCK_NORMAL;
             id       == 4'h3;
             foreach (strb[i]) strb[i] == 4'b1111;
         }) `uvm_fatal(get_type_name(), "Randomization failed for W_BEFORE_AW write")

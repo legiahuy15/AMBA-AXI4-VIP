@@ -48,6 +48,7 @@ class axi4_narrow_burst_seq extends axi4_base_sequence;
             len   == 3;              // 4-beat burst
             size  == AXI4_SIZE_1B;   // 1 byte per transfer (narrow)
             burst == AXI4_BURST_INCR;
+            lock  == AXI4_LOCK_NORMAL;
             id    == 4'h4;
         }) `uvm_fatal(get_type_name(), "Randomization failed for 1B narrow write")
         finish_item(tr);
@@ -70,6 +71,7 @@ class axi4_narrow_burst_seq extends axi4_base_sequence;
             len   == 3;
             size  == AXI4_SIZE_1B;
             burst == AXI4_BURST_INCR;
+            lock  == AXI4_LOCK_NORMAL;
             id    == 4'h4;
         }) `uvm_fatal(get_type_name(), "Randomization failed for 1B narrow read")
         finish_item(tr);
@@ -92,6 +94,7 @@ class axi4_narrow_burst_seq extends axi4_base_sequence;
             len   == 3;              // 4-beat burst
             size  == AXI4_SIZE_2B;   // 2 bytes per transfer (narrow)
             burst == AXI4_BURST_INCR;
+            lock  == AXI4_LOCK_NORMAL;
             id    == 4'h5;
         }) `uvm_fatal(get_type_name(), "Randomization failed for 2B narrow write")
         finish_item(tr);
@@ -113,6 +116,7 @@ class axi4_narrow_burst_seq extends axi4_base_sequence;
             len   == 3;
             size  == AXI4_SIZE_2B;
             burst == AXI4_BURST_INCR;
+            lock  == AXI4_LOCK_NORMAL;
             id    == 4'h5;
         }) `uvm_fatal(get_type_name(), "Randomization failed for 2B narrow read")
         finish_item(tr);
