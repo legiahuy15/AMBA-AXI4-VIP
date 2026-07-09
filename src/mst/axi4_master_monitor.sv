@@ -312,6 +312,11 @@ class axi4_master_monitor extends uvm_monitor;
             `uvm_info(get_type_name(),
                       $sformatf("Read complete: ID=0x%0h ADDR=0x%08h %0d beats",
                                 tr.id, tr.addr, tr.len + 1), UVM_MEDIUM)
+            // DEBUG: dump each captured R beat's data straight off the bus
+            foreach (tr.data[i])
+                `uvm_info(get_type_name(),
+                          $sformatf("R DATA ID=0x%0h beat[%0d]=0x%08h RRESP=%s",
+                                    tr.id, i, tr.data[i], tr.rresp[i].name()), UVM_LOW)
             ap.write(tr);
         end
     endtask : monitor_r_channel
