@@ -16,42 +16,42 @@ add wave -color Yellow sim:/tb_top/intf/clk
 add wave -color Yellow sim:/tb_top/intf/rst_n
 
 add wave -divider {AW Channel}
-add wave -color green -hex          sim:/tb_top/intf/AWID
-add wave -color green -hex          sim:/tb_top/intf/AWADDR
-add wave -color green -hex          sim:/tb_top/intf/AWLEN
-add wave -color green -radix axi4_size  sim:/tb_top/intf/AWSIZE
-add wave -color green -radix axi4_burst sim:/tb_top/intf/AWBURST
-add wave -color green -radix axi4_lock   sim:/tb_top/intf/AWLOCK
-add wave -color green sim:/tb_top/intf/AWVALID
-add wave -color green sim:/tb_top/intf/AWREADY
+add wave -color #00ff00 -hex          sim:/tb_top/intf/AWID
+add wave -color #00ff00 -hex          sim:/tb_top/intf/AWADDR
+add wave -color #00ff00 -hex          sim:/tb_top/intf/AWLEN
+add wave -color #00ff00 -radix axi4_size  sim:/tb_top/intf/AWSIZE
+add wave -color #00ff00 -radix axi4_burst sim:/tb_top/intf/AWBURST
+add wave -color #00ff00 -radix axi4_lock   sim:/tb_top/intf/AWLOCK
+add wave -color #00ff00 sim:/tb_top/intf/AWVALID
+add wave -color #00ff00 sim:/tb_top/intf/AWREADY
 
 add wave -divider {W Channel}
-add wave -color green -hex sim:/tb_top/intf/WDATA
-add wave -color green -hex sim:/tb_top/intf/WSTRB
-add wave -color green sim:/tb_top/intf/WLAST
-add wave -color green sim:/tb_top/intf/WVALID
-add wave -color green sim:/tb_top/intf/WREADY
+add wave -color #00ff00 -hex sim:/tb_top/intf/WDATA
+add wave -color #00ff00 -hex sim:/tb_top/intf/WSTRB
+add wave -color #00ff00 sim:/tb_top/intf/WLAST
+add wave -color #00ff00 sim:/tb_top/intf/WVALID
+add wave -color #00ff00 sim:/tb_top/intf/WREADY
 
 add wave -divider {B Channel}
-add wave -color green -hex          sim:/tb_top/intf/BID
-add wave -color green -radix axi4_resp sim:/tb_top/intf/BRESP
-add wave -color green sim:/tb_top/intf/BVALID
-add wave -color green sim:/tb_top/intf/BREADY
+add wave -color #00ff00 -hex          sim:/tb_top/intf/BID
+add wave -color #00ff00 -radix axi4_resp sim:/tb_top/intf/BRESP
+add wave -color #00ff00 sim:/tb_top/intf/BVALID
+add wave -color #00ff00 sim:/tb_top/intf/BREADY
 
 add wave -divider {AR Channel}
-add wave -color green -hex          sim:/tb_top/intf/ARID
-add wave -color green -hex          sim:/tb_top/intf/ARADDR
-add wave -color green -hex          sim:/tb_top/intf/ARLEN
-add wave -color green -radix axi4_size  sim:/tb_top/intf/ARSIZE
-add wave -color green -radix axi4_burst sim:/tb_top/intf/ARBURST
-add wave -color green -radix axi4_lock   sim:/tb_top/intf/ARLOCK
-add wave -color green sim:/tb_top/intf/ARVALID
-add wave -color green sim:/tb_top/intf/ARREADY
+add wave -color #00ff00 -hex          sim:/tb_top/intf/ARID
+add wave -color #00ff00 -hex          sim:/tb_top/intf/ARADDR
+add wave -color #00ff00 -hex          sim:/tb_top/intf/ARLEN
+add wave -color #00ff00 -radix axi4_size  sim:/tb_top/intf/ARSIZE
+add wave -color #00ff00 -radix axi4_burst sim:/tb_top/intf/ARBURST
+add wave -color #00ff00 -radix axi4_lock   sim:/tb_top/intf/ARLOCK
+add wave -color #00ff00 sim:/tb_top/intf/ARVALID
+add wave -color #00ff00 sim:/tb_top/intf/ARREADY
 
 add wave -divider {R Channel}
-add wave -color green -hex          sim:/tb_top/intf/RID
-add wave -color green -hex          sim:/tb_top/intf/RDATA
-add wave -color green -radix axi4_resp sim:/tb_top/intf/RRESP
-add wave -color green sim:/tb_top/intf/RLAST
-add wave -color green sim:/tb_top/intf/RVALID
-add wave -color green sim:/tb_top/intf/RREADY
+add wave -color #00ff00 -hex          sim:/tb_top/intf/RID
+add wave -color #00ff00 -hex          sim:/tb_top/intf/RDATA
+add wave -color #00ff00 -radix axi4_resp sim:/tb_top/intf/RRESP
+add wave -color #00ff00 sim:/tb_top/intf/RLAST
+add wave -color #00ff00 sim:/tb_top/intf/RVALID
+add wave -color #00ff00 sim:/tb_top/intf/RREADY
