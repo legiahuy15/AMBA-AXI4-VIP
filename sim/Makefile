@@ -134,28 +134,7 @@ gui: optimize
 		+UVM_TESTNAME=$(TESTNAME) \
 		+UVM_VERBOSITY=$(UVM_VERBOSITY) \
 		$(PLUSARGS) \
-		-do "\
-			add wave -divider {System}; \
-			add wave -color Yellow sim:/tb_top/intf/clk; \
-			add wave -color Yellow sim:/tb_top/intf/rst_n; \
-			add wave -divider {AW Channel}; \
-			add wave -hex sim:/tb_top/intf/AWID sim:/tb_top/intf/AWADDR sim:/tb_top/intf/AWLEN; \
-			add wave -hex sim:/tb_top/intf/AWSIZE sim:/tb_top/intf/AWBURST; \
-			add wave sim:/tb_top/intf/AWVALID sim:/tb_top/intf/AWREADY; \
-			add wave -divider {W Channel}; \
-			add wave -hex sim:/tb_top/intf/WDATA sim:/tb_top/intf/WSTRB; \
-			add wave sim:/tb_top/intf/WLAST sim:/tb_top/intf/WVALID sim:/tb_top/intf/WREADY; \
-			add wave -divider {B Channel}; \
-			add wave -hex sim:/tb_top/intf/BID sim:/tb_top/intf/BRESP; \
-			add wave sim:/tb_top/intf/BVALID sim:/tb_top/intf/BREADY; \
-			add wave -divider {AR Channel}; \
-			add wave -hex sim:/tb_top/intf/ARID sim:/tb_top/intf/ARADDR sim:/tb_top/intf/ARLEN; \
-			add wave -hex sim:/tb_top/intf/ARSIZE sim:/tb_top/intf/ARBURST; \
-			add wave sim:/tb_top/intf/ARVALID sim:/tb_top/intf/ARREADY; \
-			add wave -divider {R Channel}; \
-			add wave -hex sim:/tb_top/intf/RID sim:/tb_top/intf/RDATA sim:/tb_top/intf/RRESP; \
-			add wave sim:/tb_top/intf/RLAST sim:/tb_top/intf/RVALID sim:/tb_top/intf/RREADY; \
-			run -all" \
+		-do "do wave.do; run -all" \
 		opt_tb_top &
 
 # ==============================================================================
