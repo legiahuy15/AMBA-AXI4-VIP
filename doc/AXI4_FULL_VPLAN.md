@@ -1,7 +1,6 @@
 # AXI4 Learning VIP – Concise Verification Plan
 
 ## Scope
-
 - Environment: Huy Le's self-contained master-VIP to slave-VIP UVM project.
 - Goal: core AXI4 memory-mapped functional correctness for learning and project verification.
 - Reference: Arm AMBA AXI and ACE Protocol Specification, IHI 0022H.c.
