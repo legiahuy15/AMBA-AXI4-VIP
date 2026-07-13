@@ -5,7 +5,9 @@
 // Description : Out-of-Order transactions test.
 //               Executes a sequence generating concurrent read and write
 //               bursts with different IDs, configuring the slave driver to
-//               return read responses out-of-order without interleaving.
+//               return complete read bursts out-of-order across different IDs. The default
+//               subordinate does not generate cross-ID beat interleaving, but
+//               the master and monitors accept legal interleaving.
 //               This file is `included inside axi4_test_pkg.sv.
 //==============================================================================
 
@@ -30,20 +32,20 @@ class axi4_out_of_order_test extends axi4_base_test;
     bit          r_reorder  = 1;
 
     // =========================================================================
-    // Build phase - push slave-driver config BEFORE env/agent/drv are built
+    // Build phase - configure the shared slave agent configuration
     // =========================================================================
     function void build_phase(uvm_phase phase);
         // Allow command-line overrides (available at elaboration time)
         void'($value$plusargs("OUTSTANDING_DEPTH=%d", depth));
         void'($value$plusargs("R_REORDER_EN=%d", r_reorder));
 
-        // Push config BEFORE super.build_phase creates env -> slave_agent -> drv
-        uvm_config_db#(bit)::set(this, "env.slave_agent.drv",
-                                 "r_reorder_enable", r_reorder);
-        uvm_config_db#(int unsigned)::set(this, "env.slave_agent.drv",
-                                          "r_outstanding_max", depth);
-
         super.build_phase(phase);
+
+        //Hoang Ho - BEGIN: configure through env_cfg so the slave agent does
+        // not overwrite the test's reorder settings when it builds the driver.
+        env_cfg.slave_agent_cfg.r_reorder_enable  = r_reorder;
+        env_cfg.slave_agent_cfg.r_outstanding_max = (depth == 0) ? 1 : depth;
+        //Hoang Ho - END: configure through env_cfg
     endfunction : build_phase
 
     // =========================================================================
@@ -61,7 +63,7 @@ class axi4_out_of_order_test extends axi4_base_test;
         void'($value$plusargs("NUM_READS=%d", num_reads));
 
         `uvm_info(get_type_name(),
-                  $sformatf("Starting Out-of-Order test with %0d writes, %0d reads, depth=%0d, r_reorder=%0b (no-interleaving)",
+                  $sformatf("Starting Out-of-Order test with %0d writes, %0d reads, depth=%0d, r_reorder=%0b (whole-burst OOO; receiver supports legal interleaving)",
                             num_writes, num_reads, depth, r_reorder),
                   UVM_LOW)
 

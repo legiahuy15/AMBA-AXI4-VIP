@@ -1,3 +1,8 @@
+//=============================================================================
+// OWNERSHIP NOTE
+//   Original unmarked code in this file : Huy Le / original AXI4-VIP repo
+//   Blocks marked //Hoang Ho            : Hoang Ho functional/spec fixes
+//=============================================================================
 //==============================================================================
 // File        : axi4_pkg.sv
 // Project     : AXI4 VIP
@@ -55,9 +60,7 @@ package axi4_pkg;
     `include "seq/axi4_random_seq.sv"
     `include "seq/axi4_outstanding_seq.sv"
     `include "seq/axi4_out_of_order_seq.sv"
-    `include "seq/axi4_ooo_demo_seq.sv"
     `include "seq/axi4_exclusive_seq.sv"
-    `include "seq/axi4_exclusive_demo_seq.sv"
     `include "seq/axi4_illegal_exclusive_seq.sv"
     `include "seq/axi4_exclusive_fail_seq.sv"
     `include "seq/axi4_reset_traffic_seq.sv"
@@ -73,6 +76,10 @@ package axi4_pkg;
     `include "seq/axi4_back_to_back_seq.sv"
     `include "seq/axi4_data_integrity_seq.sv"
     `include "seq/axi4_addr_data_integrity_seq.sv"
+    //Hoang Ho - BEGIN: include new 4KB boundary sequence
+    `include "seq/axi4_4kb_boundary_seq.sv"
+    `include "seq/axi4_spec_corner_seq.sv" //Hoang Ho - new functional corner sequence
+    //Hoang Ho - END: include new spec-compliance sequences
 
     // =========================================================================
     // Environment-level Components  (src/env/)

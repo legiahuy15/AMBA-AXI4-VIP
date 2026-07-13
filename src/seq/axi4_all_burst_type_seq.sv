@@ -47,12 +47,11 @@ class axi4_all_burst_type_seq extends axi4_base_sequence;
             len   == 3;              // 4 beats
             size  == AXI4_SIZE_4B;
             burst == AXI4_BURST_FIXED;
-            lock  == AXI4_LOCK_NORMAL;
             id    == 4'h6;
             foreach (strb[i]) strb[i] == 4'b1111;
         }) `uvm_fatal(get_type_name(), "Randomization failed for FIXED write")
         finish_item(wr_tr);
-        wait(wr_tr.done_event.ev.triggered);
+        wait (wr_tr.completed); //Hoang Ho - persistent completion wait
 
         rd_tr = axi4_transaction::type_id::create("fixed_rd_tr");
         start_item(rd_tr);
@@ -62,11 +61,10 @@ class axi4_all_burst_type_seq extends axi4_base_sequence;
             len   == 3;
             size  == AXI4_SIZE_4B;
             burst == AXI4_BURST_FIXED;
-            lock  == AXI4_LOCK_NORMAL;
             id    == 4'h6;
         }) `uvm_fatal(get_type_name(), "Randomization failed for FIXED read")
         finish_item(rd_tr);
-        wait(rd_tr.done_event.ev.triggered);
+        wait (rd_tr.completed); //Hoang Ho - persistent completion wait
 
         `uvm_info(get_type_name(),
                   $sformatf("FIXED pair done: ADDR=0x%08h BRESP=%s",
@@ -85,12 +83,11 @@ class axi4_all_burst_type_seq extends axi4_base_sequence;
             len   == 3;              // 4 beats
             size  == AXI4_SIZE_4B;
             burst == AXI4_BURST_INCR;
-            lock  == AXI4_LOCK_NORMAL;
             id    == 4'h7;
             foreach (strb[i]) strb[i] == 4'b1111;
         }) `uvm_fatal(get_type_name(), "Randomization failed for INCR write")
         finish_item(wr_tr);
-        wait(wr_tr.done_event.ev.triggered);
+        wait (wr_tr.completed); //Hoang Ho - persistent completion wait
 
         rd_tr = axi4_transaction::type_id::create("incr_rd_tr");
         start_item(rd_tr);
@@ -100,11 +97,10 @@ class axi4_all_burst_type_seq extends axi4_base_sequence;
             len   == 3;
             size  == AXI4_SIZE_4B;
             burst == AXI4_BURST_INCR;
-            lock  == AXI4_LOCK_NORMAL;
             id    == 4'h7;
         }) `uvm_fatal(get_type_name(), "Randomization failed for INCR read")
         finish_item(rd_tr);
-        wait(rd_tr.done_event.ev.triggered);
+        wait (rd_tr.completed); //Hoang Ho - persistent completion wait
 
         `uvm_info(get_type_name(),
                   $sformatf("INCR pair done: ADDR=0x%08h BRESP=%s",
@@ -124,12 +120,11 @@ class axi4_all_burst_type_seq extends axi4_base_sequence;
             len   == 3;                // 4 beats (valid for WRAP)
             size  == AXI4_SIZE_4B;
             burst == AXI4_BURST_WRAP;
-            lock  == AXI4_LOCK_NORMAL;
             id    == 4'h8;
             foreach (strb[i]) strb[i] == 4'b1111;
         }) `uvm_fatal(get_type_name(), "Randomization failed for WRAP write")
         finish_item(wr_tr);
-        wait(wr_tr.done_event.ev.triggered);
+        wait (wr_tr.completed); //Hoang Ho - persistent completion wait
 
         rd_tr = axi4_transaction::type_id::create("wrap_rd_tr");
         start_item(rd_tr);
@@ -139,11 +134,10 @@ class axi4_all_burst_type_seq extends axi4_base_sequence;
             len   == 3;
             size  == AXI4_SIZE_4B;
             burst == AXI4_BURST_WRAP;
-            lock  == AXI4_LOCK_NORMAL;
             id    == 4'h8;
         }) `uvm_fatal(get_type_name(), "Randomization failed for WRAP read")
         finish_item(rd_tr);
-        wait(rd_tr.done_event.ev.triggered);
+        wait (rd_tr.completed); //Hoang Ho - persistent completion wait
 
         `uvm_info(get_type_name(),
                   $sformatf("WRAP pair done: ADDR=0x%08h BRESP=%s",

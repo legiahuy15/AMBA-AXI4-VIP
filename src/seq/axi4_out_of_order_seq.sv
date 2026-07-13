@@ -6,7 +6,8 @@
 //               Generates multiple concurrent transactions with different IDs
 //               to verify out-of-order response handling in the system.
 //               Note: This sequence complies with the design limitation that
-//               read data interleaving is NOT supported. Beats within a single
+//               the default slave returns one whole burst at a time. The updated master and
+//               monitors also accept legal cross-ID read-data interleaving. Beats within a single
 //               read burst are returned contiguously.
 //               This file is `included inside axi4_pkg.sv.
 //==============================================================================
@@ -40,7 +41,7 @@ class axi4_out_of_order_seq extends axi4_base_sequence;
         semaphore sem_read;
 
         `uvm_info(get_type_name(),
-                  $sformatf("Starting Out-of-Order sequence (no-interleaving): writes=%0d, reads=%0d, depth=%0d", 
+                  $sformatf("Starting Out-of-Order sequence (whole-burst response mode): writes=%0d, reads=%0d, depth=%0d",
                             num_writes, num_reads, outstanding_depth),
                   UVM_MEDIUM)
 
@@ -62,7 +63,6 @@ class axi4_out_of_order_seq extends axi4_base_sequence;
                             if (!wr_tr.randomize() with {
                                 dir   == AXI4_WRITE;
                                 addr  inside {[addr_lo : addr_hi]};
-                                lock  == AXI4_LOCK_NORMAL;
                                 // Distribute IDs to maximize OOO possibility
                                 id    == ((id_lo + idx) % (id_hi - id_lo + 1));
                             }) `uvm_fatal(get_type_name(), $sformatf("Randomization failed for OOO write transaction #%0d", idx))
@@ -75,7 +75,7 @@ class axi4_out_of_order_seq extends axi4_base_sequence;
                             finish_item(wr_tr);
 
                             // Wait for response
-                            wait(wr_tr.done_event.ev.triggered);
+                            wait (wr_tr.completed); //Hoang Ho - persistent completion wait
 
                             `uvm_info(get_type_name(),
                                       $sformatf("OOO Write [#%0d] complete: ID=0x%0h RESP=%s", 
@@ -102,7 +102,6 @@ class axi4_out_of_order_seq extends axi4_base_sequence;
                             if (!rd_tr.randomize() with {
                                 dir   == AXI4_READ;
                                 addr  inside {[addr_lo : addr_hi]};
-                                lock  == AXI4_LOCK_NORMAL;
                                 // Distribute IDs to maximize OOO possibility
                                 id    == ((id_lo + idx) % (id_hi - id_lo + 1));
                             }) `uvm_fatal(get_type_name(), $sformatf("Randomization failed for OOO read transaction #%0d", idx))
@@ -115,7 +114,7 @@ class axi4_out_of_order_seq extends axi4_base_sequence;
                             finish_item(rd_tr);
 
                             // Wait for response (entire burst)
-                            wait(rd_tr.done_event.ev.triggered);
+                            wait (rd_tr.completed); //Hoang Ho - persistent completion wait
 
                             `uvm_info(get_type_name(),
                                       $sformatf("OOO Read [#%0d] complete: ID=0x%0h", idx, rd_tr.id),

@@ -1,4 +1,9 @@
 //==============================================================================
+// OWNERSHIP NOTE
+//   Original unmarked code in this file : Huy Le / original AXI4-VIP repo
+//   Blocks marked //Hoang Ho            : Hoang Ho functional/spec fixes
+//==============================================================================
+//==============================================================================
 // File        : axi4_master_monitor.sv
 // Project     : AXI4 VIP
 // Author      : Huy Le
@@ -50,6 +55,10 @@ class axi4_master_monitor extends uvm_monitor;
     //   monitor_ar_channel -> pending_r[ID]
     //   monitor_r_channel  : pending_r[RID] -> ap.write()
     axi4_transaction pending_r[bit[AXI4_ID_WIDTH-1:0]][$];
+
+    //Hoang Ho - BEGIN: beat index state for interleaved R responses
+    protected int unsigned pending_r_beat[axi4_transaction];
+    //Hoang Ho - END: beat index state for interleaved R responses
 
     // =========================================================================
     // Constructor
@@ -250,69 +259,63 @@ class axi4_master_monitor extends uvm_monitor;
 
     // =========================================================================
     // R Channel - Collect read data beats, match with pending AR
-    //   AXI4: no read data interleaving. All beats for one transaction
-    //   arrive contiguously, but responses for different IDs may be reordered.
+    //   AXI4 permits R beats from different IDs to interleave; reconstruction is RID-based.
     //   Matched by RID against pending_r queues.
     // =========================================================================
     task monitor_r_channel();
         forever begin
-            axi4_transaction tr;
             bit [AXI4_ID_WIDTH-1:0] rid;
+            axi4_transaction tr;
+            int unsigned beat_idx;
 
-            // Wait for first R beat of a transaction
             do @(vif.monitor_cb);
             while (!(vif.monitor_cb.RVALID && vif.monitor_cb.RREADY));
 
             rid = vif.monitor_cb.RID;
 
-            // Match with pending AR by RID
+            //Hoang Ho - BEGIN: reconstruct each R beat by RID
+            // Different IDs may interleave. For one RID, the front pending AR
+            // remains active until its RLAST, preserving same-ID ordering.
             if (!pending_r.exists(rid) || pending_r[rid].size() == 0) begin
                 `uvm_error(get_type_name(),
-                           $sformatf("R data ID=0x%0h - no matching AR pending", rid))
-                // Drain remaining beats until RLAST to avoid state corruption
-                while (!vif.monitor_cb.RLAST) begin
-                    do @(vif.monitor_cb);
-                    while (!(vif.monitor_cb.RVALID && vif.monitor_cb.RREADY));
-                end
+                           $sformatf("R data RID=0x%0h has no matching AR", rid))
                 continue;
             end
 
-            tr = pending_r[rid].pop_front();
+            tr = pending_r[rid][0];
+            if (!pending_r_beat.exists(tr))
+                pending_r_beat[tr] = 0;
+            beat_idx = pending_r_beat[tr];
 
-            // Capture first beat (already on bus from do-while above)
-            tr.data[0]  = vif.monitor_cb.RDATA;
-            tr.rresp[0] = axi4_resp_e'(vif.monitor_cb.RRESP);
-
-            if (tr.len == 0) begin
-                // Single-beat read - check RLAST
-                if (!vif.monitor_cb.RLAST)
-                    `uvm_error(get_type_name(),
-                               $sformatf("RLAST not asserted on single-beat read (ID=0x%0h)", rid))
-            end else begin
-                // Multi-beat: capture remaining beats
-                for (int beat = 1; beat <= tr.len; beat++) begin
-                    do @(vif.monitor_cb);
-                    while (!(vif.monitor_cb.RVALID && vif.monitor_cb.RREADY));
-
-                    tr.data[beat]  = vif.monitor_cb.RDATA;
-                    tr.rresp[beat] = axi4_resp_e'(vif.monitor_cb.RRESP);
-
-                    // RLAST sanity checks
-                    if (beat == tr.len && !vif.monitor_cb.RLAST)
-                        `uvm_error(get_type_name(),
-                                   $sformatf("RLAST not asserted on final beat %0d (ID=0x%0h)",
-                                             beat, rid))
-                    if (beat != tr.len && vif.monitor_cb.RLAST)
-                        `uvm_error(get_type_name(),
-                                   $sformatf("Unexpected RLAST on beat %0d of %0d (ID=0x%0h)",
-                                             beat, tr.len, rid))
-                end
+            if (beat_idx > tr.len) begin
+                `uvm_error(get_type_name(),
+                           $sformatf("Extra R beat RID=0x%0h after LEN=%0d", rid, tr.len))
+                continue;
             end
 
-            `uvm_info(get_type_name(),
-                      $sformatf("Read complete: ID=0x%0h ADDR=0x%08h %0d beats",
-                                tr.id, tr.addr, tr.len + 1), UVM_MEDIUM)
-            ap.write(tr);
+            tr.data[beat_idx]  = vif.monitor_cb.RDATA;
+            tr.rresp[beat_idx] = axi4_resp_e'(vif.monitor_cb.RRESP);
+
+            if ((beat_idx == tr.len) && !vif.monitor_cb.RLAST)
+                `uvm_error(get_type_name(),
+                           $sformatf("RLAST missing on final beat %0d RID=0x%0h", beat_idx, rid))
+            if ((beat_idx != tr.len) && vif.monitor_cb.RLAST)
+                `uvm_error(get_type_name(),
+                           $sformatf("RLAST early on beat %0d of %0d RID=0x%0h", beat_idx, tr.len, rid))
+
+            if (vif.monitor_cb.RLAST || (beat_idx == tr.len)) begin
+                void'(pending_r[rid].pop_front());
+                if (pending_r[rid].size() == 0)
+                    pending_r.delete(rid);
+                pending_r_beat.delete(tr);
+                `uvm_info(get_type_name(),
+                          $sformatf("Read complete: ID=0x%0h ADDR=0x%08h %0d beats",
+                                    tr.id, tr.addr, tr.len + 1), UVM_MEDIUM)
+                ap.write(tr);
+            end else begin
+                pending_r_beat[tr] = beat_idx + 1;
+            end
+            //Hoang Ho - END: reconstruct each R beat by RID
         end
     endtask : monitor_r_channel
 
@@ -324,28 +327,31 @@ class axi4_master_monitor extends uvm_monitor;
         w_beat_queue.delete();
         pending_b.delete();
         pending_r.delete();
+        //Hoang Ho - clear partial interleaved read state on reset
+        pending_r_beat.delete();
     endfunction : flush_queues
 
     // =========================================================================
-    // report_phase - warn about incomplete transactions at end of simulation
+    // report_phase - incomplete transactions are functional failures
     // =========================================================================
     function void report_phase(uvm_phase phase);
+        //Hoang Ho - A clean learning-VIP run must not leave channel state pending.
         if (aw_queue.size() > 0)
-            `uvm_warning(get_type_name(),
+            `uvm_error(get_type_name(),
                          $sformatf("%0d unmatched AW transactions at end of sim",
                                    aw_queue.size()))
         if (w_beat_queue.size() > 0)
-            `uvm_warning(get_type_name(),
+            `uvm_error(get_type_name(),
                          $sformatf("%0d orphan W beats at end of sim",
                                    w_beat_queue.size()))
         foreach (pending_b[id])
             if (pending_b[id].size() > 0)
-                `uvm_warning(get_type_name(),
+                `uvm_error(get_type_name(),
                              $sformatf("%0d writes ID=0x%0h pending B response",
                                        pending_b[id].size(), id))
         foreach (pending_r[id])
             if (pending_r[id].size() > 0)
-                `uvm_warning(get_type_name(),
+                `uvm_error(get_type_name(),
                              $sformatf("%0d reads ID=0x%0h pending R data",
                                        pending_r[id].size(), id))
     endfunction : report_phase

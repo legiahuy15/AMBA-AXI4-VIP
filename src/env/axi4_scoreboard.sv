@@ -1,10 +1,15 @@
+//=============================================================================
+// OWNERSHIP NOTE
+//   Original unmarked code in this file : Huy Le / original AXI4-VIP repo
+//   Blocks marked //Hoang Ho            : Hoang Ho functional/spec fixes
+//=============================================================================
 //==============================================================================
 // File        : axi4_scoreboard.sv
 // Project     : AXI4 VIP
 // Author      : Huy Le
 // Description : AXI4 scoreboard.
 //               Receives completed transactions from both master and slave
-//               monitors, matches them by (dir, id, addr), and compares all
+//               monitors, matches them by a robust AXI4 transaction key, and compares all
 //               fields using axi4_transaction::compare() (which includes
 //               the manual rresp[] comparison via do_compare).
 //
@@ -113,12 +118,32 @@ class axi4_scoreboard extends uvm_scoreboard;
             try_match(tr, slave_rd_q, master_rd_q, "READ");
     endfunction : write_slave
 
+    //Hoang Ho - BEGIN: Robust AXI4 Full transaction matching key
+    // =========================================================================
+    // is_same_txn_key - AXI4 transaction-level matching key
+    //   Do not match only by (id, addr). AXI4 can have multiple outstanding
+    //   transactions with the same ID/address but different length, size, burst,
+    //   lock, or attributes. This key is still lightweight, but much safer for
+    //   AXI4 Full than the old (id, addr) match.
+    // =========================================================================
+    function bit is_same_txn_key(axi4_transaction a, axi4_transaction b);
+        return (a.dir    == b.dir)    &&
+               (a.id     == b.id)     &&
+               (a.addr   == b.addr)   &&
+               (a.len    == b.len)    &&
+               (a.size   == b.size)   &&
+               (a.burst  == b.burst)  &&
+               (a.lock   == b.lock)   &&
+               (a.cache  == b.cache)  &&
+               (a.prot   == b.prot)   &&
+               (a.region == b.region);
+    endfunction : is_same_txn_key
+    //Hoang Ho - END: Robust AXI4 Full transaction matching key
+
     // =========================================================================
     // try_match - search for matching transaction on the other side
-    //   Match key: (id, addr)
     //   If found:  compare and consume both.
     //   If not:    push to own queue for future matching.
-    //   FIFO ordering within same (id, addr) pairs is preserved.
     // =========================================================================
     function void try_match(
         axi4_transaction     new_tr,
@@ -126,24 +151,21 @@ class axi4_scoreboard extends uvm_scoreboard;
         ref axi4_transaction other_q[$],
         input string         dir_str
     );
-        // Search other side's queue for a matching transaction
         for (int i = 0; i < other_q.size(); i++) begin
-            if (other_q[i].id == new_tr.id && other_q[i].addr == new_tr.addr) begin
-                // Match found - compare and consume
+            //Hoang Ho - BEGIN: replace old id+addr matching with full transaction key
+            if (is_same_txn_key(other_q[i], new_tr)) begin
                 axi4_transaction ref_tr = other_q[i];
                 other_q.delete(i);
                 compare_transactions(ref_tr, new_tr, dir_str);
                 return;
             end
+            //Hoang Ho - END: replace old id+addr matching with full transaction key
         end
 
-        // No match on other side - queue for later
         own_q.push_back(new_tr);
     endfunction : try_match
 
-    // =========================================================================
-    // calc_beat_addr - Calculate address for each beat in a burst
-    // =========================================================================
+    //Hoang Ho - BEGIN: shared, spec-correct address and lane wrappers
     function bit [AXI4_ADDR_WIDTH-1:0] calc_beat_addr(
         bit [AXI4_ADDR_WIDTH-1:0] start_addr,
         int unsigned              beat_idx,
@@ -151,126 +173,115 @@ class axi4_scoreboard extends uvm_scoreboard;
         bit [1:0]                 burst_type,
         bit [7:0]                 len
     );
-        int unsigned num_bytes  = 1 << size;
-        int unsigned burst_len  = len + 1;
-        bit [AXI4_ADDR_WIDTH-1:0] aligned_addr;
-        bit [AXI4_ADDR_WIDTH-1:0] addr;
-
-        aligned_addr = (start_addr / num_bytes) * num_bytes;
-
-        case (burst_type)
-            2'b00: begin // FIXED
-                addr = start_addr;
-            end
-            2'b01: begin // INCR
-                if (beat_idx == 0)
-                    addr = start_addr;
-                else
-                    addr = aligned_addr + beat_idx * num_bytes;
-            end
-            2'b10: begin // WRAP
-                int unsigned total_size   = num_bytes * burst_len;
-                bit [AXI4_ADDR_WIDTH-1:0] wrap_boundary;
-                wrap_boundary = (start_addr / total_size) * total_size;
-
-                if (beat_idx == 0)
-                    addr = start_addr;
-                else begin
-                    addr = aligned_addr + beat_idx * num_bytes;
-                    if (addr >= wrap_boundary + total_size)
-                        addr = addr - total_size;
-                end
-            end
-            default: addr = start_addr;
-        endcase
-
-        return addr;
+        return axi4_calc_beat_addr(start_addr, beat_idx, size,
+                                   axi4_burst_type_e'(burst_type), len);
     endfunction : calc_beat_addr
+
+    function bit [AXI4_STRB_WIDTH-1:0] calc_legal_wstrb_mask(
+        bit [AXI4_ADDR_WIDTH-1:0] start_addr,
+        int unsigned              beat_idx,
+        bit [2:0]                 size,
+        bit [1:0]                 burst_type,
+        bit [7:0]                 len
+    );
+        return axi4_calc_legal_lane_mask(start_addr, beat_idx, size,
+                                         axi4_burst_type_e'(burst_type), len);
+    endfunction : calc_legal_wstrb_mask
+    //Hoang Ho - END: shared, spec-correct address and lane wrappers
 
     // =========================================================================
     // update_ref_mem - update scoreboard's reference memory on WRITES
     // =========================================================================
     function void update_ref_mem(axi4_transaction tr);
-        bit do_write = 1;
+        bit do_write;
 
-        // Check if write should be ignored (matches slave driver's logic)
-        if (tr.addr >= 32'hF000_0000) begin
-            do_write = 0; // DECERR region
-        end else if (tr.addr >= 32'hE000_0000) begin
-            do_write = 0; // SLVERR region
-        end else if (tr.lock == AXI4_LOCK_EXCLUSIVE) begin
-            // Exclusive Write: succeeds only if it received EXOKAY
-            if (tr.resp != AXI4_RESP_EXOKAY) begin
-                do_write = 0;
-            end
-        end
+        //Hoang Ho - BEGIN: response-driven reference-memory commit policy
+        // Normal successful writes and successful exclusive writes commit data.
+        // SLVERR/DECERR and failed exclusive writes never modify memory.
+        do_write = ((tr.lock == AXI4_LOCK_NORMAL)    &&
+                    (tr.resp == AXI4_RESP_OKAY))     ||
+                   ((tr.lock == AXI4_LOCK_EXCLUSIVE) &&
+                    (tr.resp == AXI4_RESP_EXOKAY));
 
         if (do_write) begin
             for (int beat = 0; beat <= tr.len; beat++) begin
                 bit [AXI4_ADDR_WIDTH-1:0] beat_addr;
-                bit [AXI4_ADDR_WIDTH-1:0] aligned_beat_addr;
-                beat_addr = calc_beat_addr(tr.addr, beat, tr.size, tr.burst, tr.len);
-                aligned_beat_addr = (beat_addr / AXI4_STRB_WIDTH) * AXI4_STRB_WIDTH;
-                for (int b = 0; b < AXI4_STRB_WIDTH; b++) begin
-                    if (tr.strb[beat][b]) begin
-                        ref_mem[aligned_beat_addr + b] = tr.data[beat][b*8 +: 8];
+                bit [AXI4_ADDR_WIDTH-1:0] bus_base;
+                bit [AXI4_STRB_WIDTH-1:0] legal_mask;
+
+                beat_addr  = axi4_calc_beat_addr(tr.addr, beat, tr.size,
+                                                 tr.burst, tr.len);
+                bus_base   = axi4_bus_word_base(beat_addr);
+                legal_mask = axi4_calc_legal_lane_mask(tr.addr, beat, tr.size,
+                                                       tr.burst, tr.len);
+
+                if ((tr.strb[beat] & ~legal_mask) != '0) begin
+                    mismatch_count++;
+                    `uvm_error(get_type_name(),
+                               $sformatf("[WSTRB_LEGALITY_FAIL] ADDR=0x%08h beat=%0d STRB=0b%0b legal=0b%0b",
+                                         tr.addr, beat, tr.strb[beat], legal_mask))
+                end
+
+                for (int lane = 0; lane < AXI4_STRB_WIDTH; lane++) begin
+                    if (legal_mask[lane] && tr.strb[beat][lane]) begin
+                        ref_mem[bus_base + lane] = tr.data[beat][lane*8 +: 8];
                         `uvm_info(get_type_name(),
                                   $sformatf("[REF_MEM_WRITE] Addr=0x%08h Data=0x%02h",
-                                            aligned_beat_addr + b, tr.data[beat][b*8 +: 8]), UVM_HIGH)
+                                            bus_base + lane, tr.data[beat][lane*8 +: 8]),
+                                  UVM_HIGH)
                     end
                 end
             end
         end else begin
             `uvm_info(get_type_name(),
-                      $sformatf("[REF_MEM_WRITE_IGNORED] Write ignored for ADDR=0x%08h LOCK=%s RESP=%s",
+                      $sformatf("[REF_MEM_WRITE_IGNORED] ADDR=0x%08h LOCK=%s RESP=%s",
                                 tr.addr, tr.lock.name(), tr.resp.name()), UVM_MEDIUM)
         end
+        //Hoang Ho - END: response-driven reference-memory commit policy
     endfunction : update_ref_mem
 
     // =========================================================================
     // check_ref_mem - verify READ transaction against reference memory
     // =========================================================================
     function void check_ref_mem(axi4_transaction tr);
+        //Hoang Ho - BEGIN: compare only bytes that belong to each AXI4 transfer
+        // Inactive lanes are not protocol data and are therefore ignored. Read
+        // beats carrying SLVERR/DECERR are checked for response only, not RDATA.
         for (int beat = 0; beat <= tr.len; beat++) begin
             bit [AXI4_ADDR_WIDTH-1:0] beat_addr;
-            bit [AXI4_DATA_WIDTH-1:0] expected_data;
-            bit [AXI4_DATA_WIDTH-1:0] actual_data;
-            int unsigned num_bytes = 1 << tr.size;
-            
-            beat_addr = calc_beat_addr(tr.addr, beat, tr.size, tr.burst, tr.len);
-            expected_data = '0;
-            actual_data   = tr.data[beat];
+            bit [AXI4_ADDR_WIDTH-1:0] bus_base;
+            bit [AXI4_STRB_WIDTH-1:0] legal_mask;
 
-            for (int offset = 0; offset < num_bytes; offset++) begin
-                bit [AXI4_ADDR_WIDTH-1:0] byte_addr;
-                int unsigned lane;
-                byte_addr = beat_addr + offset;
-                lane = byte_addr % AXI4_STRB_WIDTH;
-                if (ref_mem.exists(byte_addr)) begin
-                    expected_data[lane*8 +: 8] = ref_mem[byte_addr];
-                end
-            end
+            if (tr.rresp[beat] inside {AXI4_RESP_SLVERR, AXI4_RESP_DECERR})
+                continue;
 
-            for (int offset = 0; offset < num_bytes; offset++) begin
+            beat_addr  = axi4_calc_beat_addr(tr.addr, beat, tr.size,
+                                             tr.burst, tr.len);
+            bus_base   = axi4_bus_word_base(beat_addr);
+            legal_mask = axi4_calc_legal_lane_mask(tr.addr, beat, tr.size,
+                                                   tr.burst, tr.len);
+
+            for (int lane = 0; lane < AXI4_STRB_WIDTH; lane++) begin
                 bit [AXI4_ADDR_WIDTH-1:0] byte_addr;
-                int unsigned lane;
                 bit [7:0] exp_byte;
                 bit [7:0] act_byte;
 
-                byte_addr = beat_addr + offset;
-                lane = byte_addr % AXI4_STRB_WIDTH;
-                
-                exp_byte = expected_data[lane*8 +: 8];
-                act_byte = actual_data[lane*8 +: 8];
+                if (!legal_mask[lane])
+                    continue;
 
-                if (exp_byte != act_byte) begin
+                byte_addr = bus_base + lane;
+                exp_byte  = ref_mem.exists(byte_addr) ? ref_mem[byte_addr] : 8'h00;
+                act_byte  = tr.data[beat][lane*8 +: 8];
+
+                if (exp_byte !== act_byte) begin
                     mismatch_count++;
                     `uvm_error(get_type_name(),
-                               $sformatf("[DATA_INTEGRITY_FAIL] Read mismatch at Beat %0d, Byte Lane %0d! Addr=0x%08h | Expected=0x%02h, Actual=0x%02h",
+                               $sformatf("[DATA_INTEGRITY_FAIL] Beat=%0d Lane=%0d Addr=0x%08h Expected=0x%02h Actual=0x%02h",
                                          beat, lane, byte_addr, exp_byte, act_byte))
                 end
             end
         end
+        //Hoang Ho - END: compare only bytes that belong to each AXI4 transfer
     endfunction : check_ref_mem
 
     // =========================================================================
@@ -307,6 +318,14 @@ class axi4_scoreboard extends uvm_scoreboard;
         end
     endfunction : compare_transactions
 
+
+    //Hoang Ho - BEGIN: completion helper used by drain-aware tests
+    function int unsigned pending_count();
+        return master_wr_q.size() + master_rd_q.size() +
+               slave_wr_q.size()  + slave_rd_q.size();
+    endfunction : pending_count
+    //Hoang Ho - END: completion helper used by drain-aware tests
+
     // =========================================================================
     // check_phase - flag errors for unmatched/mismatched transactions
     // =========================================================================
@@ -319,10 +338,11 @@ class axi4_scoreboard extends uvm_scoreboard;
             `uvm_error(get_type_name(),
                        $sformatf("%0d transaction MISMATCHES detected", mismatch_count))
 
+        //Hoang Ho - unmatched traffic is a functional failure, not a warning.
         if (unmatched > 0)
-            `uvm_warning(get_type_name(),
-                         $sformatf("%0d unmatched transactions at end of simulation",
-                                   unmatched))
+            `uvm_error(get_type_name(),
+                       $sformatf("%0d unmatched transactions at end of simulation",
+                                 unmatched))
     endfunction : check_phase
 
     // =========================================================================

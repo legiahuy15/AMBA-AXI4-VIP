@@ -66,22 +66,48 @@ class axi4_addr_data_integrity_seq extends axi4_base_sequence;
         endcase
     endfunction : ref_beat_addr
 
-    // =========================================================================
-    // ref_beat_data - expected RDATA word for a beat, given mem[A] == A[7:0].
-    //   Mirrors the AXI4 byte-lane rule (lane = addr % STRB_WIDTH); inactive
-    //   lanes read as 0.
-    // =========================================================================
-    function bit [AXI4_DATA_WIDTH-1:0] ref_beat_data(
-        bit [AXI4_ADDR_WIDTH-1:0] beat_addr,
-        int                       num_bytes);
-        bit [AXI4_DATA_WIDTH-1:0] d = '0;
-        for (int off = 0; off < num_bytes; off++) begin
-            bit [AXI4_ADDR_WIDTH-1:0] ba = beat_addr + off;
-            int lane = ba % AXI4_STRB_WIDTH;
-            d[lane*8 +: 8] = ba[7:0];
+    //Hoang Ho - BEGIN: independent Arm byte-lane reference for unaligned reads
+    // The first unaligned transfer must not wrap bytes past the current data-bus
+    // word back into lane 0. Example for a 32-bit bus, ADDR=0x4002, SIZE=4B:
+    // legal first-beat lanes are 2 and 3, so expected RDATA is 0x0302_0000.
+    function automatic bit [AXI4_DATA_WIDTH-1:0] ref_beat_data(
+        input bit [AXI4_ADDR_WIDTH-1:0] start_addr,
+        input int                       beat,
+        input int                       num_bytes,
+        input axi4_burst_type_e         burst,
+        input int                       len);
+        bit [AXI4_DATA_WIDTH-1:0] d;
+        bit [AXI4_ADDR_WIDTH-1:0] beat_addr;
+        bit [AXI4_ADDR_WIDTH-1:0] bus_base;
+        bit [AXI4_ADDR_WIDTH-1:0] aligned_start;
+        bit [AXI4_ADDR_WIDTH-1:0] byte_addr;
+        int lower_lane;
+        int upper_lane;
+        int lane;
+        bit use_first_transfer_rule;
+
+        d                       = '0;
+        beat_addr               = ref_beat_addr(start_addr, beat, num_bytes, burst, len);
+        bus_base                = (beat_addr / AXI4_STRB_WIDTH) * AXI4_STRB_WIDTH;
+        aligned_start           = (start_addr / num_bytes) * num_bytes;
+        lower_lane              = beat_addr - bus_base;
+        use_first_transfer_rule = (beat == 0) || (burst == AXI4_BURST_FIXED);
+
+        if (use_first_transfer_rule && ((start_addr % num_bytes) != 0))
+            upper_lane = (aligned_start + num_bytes - 1) - bus_base;
+        else
+            upper_lane = lower_lane + num_bytes - 1;
+
+        for (lane = lower_lane; lane <= upper_lane; lane = lane + 1) begin
+            if ((lane >= 0) && (lane < AXI4_STRB_WIDTH)) begin
+                byte_addr = bus_base + lane;
+                d[lane*8 +: 8] = byte_addr[7:0];
+            end
         end
+
         return d;
     endfunction : ref_beat_data
+    //Hoang Ho - END
 
     // =========================================================================
     // seed_memory - trusted INCR write so mem[BASE+k] == (BASE+k)[7:0].
@@ -109,7 +135,7 @@ class axi4_addr_data_integrity_seq extends axi4_base_sequence;
         end
         start_item(tr);
         finish_item(tr);
-        wait(tr.done_event.ev.triggered);
+        wait (tr.completed); //Hoang Ho - persistent completion wait
         `uvm_info(get_type_name(),
                   $sformatf("Seeded 256 bytes at 0x%08h (mem[A]=A[7:0]) RESP=%s",
                             BASE, tr.resp.name()), UVM_MEDIUM)
@@ -140,11 +166,13 @@ class axi4_addr_data_integrity_seq extends axi4_base_sequence;
 
         start_item(tr);
         finish_item(tr);
-        wait(tr.done_event.ev.triggered);
+        wait (tr.completed); //Hoang Ho - persistent completion wait
 
         for (int b = 0; b <= len; b++) begin
             bit [AXI4_ADDR_WIDTH-1:0] ba  = ref_beat_addr(addr, b, num_bytes, burst, len);
-            bit [AXI4_DATA_WIDTH-1:0] exp = ref_beat_data(ba, num_bytes);
+            //Hoang Ho - use start address and beat index for the independent first-beat rule
+            bit [AXI4_DATA_WIDTH-1:0] exp =
+                ref_beat_data(addr, b, num_bytes, burst, len);
             if (tr.data[b] !== exp) begin
                 errors++;
                 `uvm_error(get_type_name(),

@@ -48,11 +48,10 @@ class axi4_narrow_burst_seq extends axi4_base_sequence;
             len   == 3;              // 4-beat burst
             size  == AXI4_SIZE_1B;   // 1 byte per transfer (narrow)
             burst == AXI4_BURST_INCR;
-            lock  == AXI4_LOCK_NORMAL;
             id    == 4'h4;
         }) `uvm_fatal(get_type_name(), "Randomization failed for 1B narrow write")
         finish_item(tr);
-        wait(tr.done_event.ev.triggered);
+        wait (tr.completed); //Hoang Ho - persistent completion wait
 
         `uvm_info(get_type_name(),
                   $sformatf("TX1 [1B-WRITE] done: ADDR=0x%08h LEN=%0d",
@@ -71,11 +70,10 @@ class axi4_narrow_burst_seq extends axi4_base_sequence;
             len   == 3;
             size  == AXI4_SIZE_1B;
             burst == AXI4_BURST_INCR;
-            lock  == AXI4_LOCK_NORMAL;
             id    == 4'h4;
         }) `uvm_fatal(get_type_name(), "Randomization failed for 1B narrow read")
         finish_item(tr);
-        wait(tr.done_event.ev.triggered);
+        wait (tr.completed); //Hoang Ho - persistent completion wait
 
         `uvm_info(get_type_name(),
                   $sformatf("TX2 [1B-READ] done: ADDR=0x%08h LEN=%0d",
@@ -94,11 +92,10 @@ class axi4_narrow_burst_seq extends axi4_base_sequence;
             len   == 3;              // 4-beat burst
             size  == AXI4_SIZE_2B;   // 2 bytes per transfer (narrow)
             burst == AXI4_BURST_INCR;
-            lock  == AXI4_LOCK_NORMAL;
             id    == 4'h5;
         }) `uvm_fatal(get_type_name(), "Randomization failed for 2B narrow write")
         finish_item(tr);
-        wait(tr.done_event.ev.triggered);
+        wait (tr.completed); //Hoang Ho - persistent completion wait
 
         `uvm_info(get_type_name(),
                   $sformatf("TX3 [2B-WRITE] done: ADDR=0x%08h LEN=%0d",
@@ -116,11 +113,10 @@ class axi4_narrow_burst_seq extends axi4_base_sequence;
             len   == 3;
             size  == AXI4_SIZE_2B;
             burst == AXI4_BURST_INCR;
-            lock  == AXI4_LOCK_NORMAL;
             id    == 4'h5;
         }) `uvm_fatal(get_type_name(), "Randomization failed for 2B narrow read")
         finish_item(tr);
-        wait(tr.done_event.ev.triggered);
+        wait (tr.completed); //Hoang Ho - persistent completion wait
 
         `uvm_info(get_type_name(),
                   $sformatf("TX4 [2B-READ] done: ADDR=0x%08h LEN=%0d",

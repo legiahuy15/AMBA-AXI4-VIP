@@ -1,140 +1,132 @@
+<!--
+OWNERSHIP NOTE
+Original unmarked project/code: Huy Le / legiahuy15/AXI4-VIP
+Hoang Ho documentation additions are marked with HTML comments.
+SystemVerilog contribution blocks are marked //Hoang Ho.
+-->
+
 # AXI4 UVM Verification IP
 
-A parameterized, protocol-compliant AMBA AXI4 Verification IP written in SystemVerilog/UVM. The environment is self-contained: an active Master agent drives transactions directly into an active Slave agent through a shared `axi4_if` interface, with no external DUT required. It targets protocol-level verification, IP bring-up, and reuse as a reference environment for AXI4-based designs.
+A parameterized, learning-oriented AMBA AXI4 Full Verification IP written in SystemVerilog/UVM. The environment is self-contained: an active master agent communicates directly with an active slave agent through a shared `axi4_if`, so no external DUT is required.
 
-Conformance target: ARM AMBA AXI4 specification (IHI0022E).
-
----
+The project targets the core functional rules of Arm AMBA AXI4 memory-mapped transactions. It is not presented as a commercial compliance product.
 
 ## Architecture
 
-The Master agent generates transactions via UVM sequences; the Slave agent responds using an internal memory model and configurable response behavior. Two monitors observe both sides of the interface. The scoreboard maintains a reference memory model and checks read-after-write data integrity, out-of-order matching, and strobe routing. A standalone SVA module checks protocol legality directly on the interface signals. A functional coverage collector samples transaction attributes and channel back-pressure.
+The master sequence/driver generates traffic on AW, W, and AR and accepts B/R responses. The reactive slave contains a byte-addressable memory model and configurable delays. Master and slave monitors independently reconstruct completed transactions. The scoreboard compares both observations and maintains a reference memory. `axi4_sva` checks protocol rules directly on the interface.
 
 ![AXI4 VIP Architecture](doc/axi4_vip.png)
 
-### Components
-
 | Component | Responsibility |
-|-----------|----------------|
-| `axi4_if` | All five AXI4 channels with clocking blocks (`master_cb`, `slave_cb`, `monitor_cb`) and modports to prevent sampling/driving races. |
-| `axi4_master_agent` | Active/passive agent: sequencer, clocking-block-driven driver, monitor. |
-| `axi4_slave_agent` | Active/passive responder agent with memory model and configurable response generation (OKAY, EXOKAY, SLVERR, DECERR) and ready-handshake shaping. |
-| `axi4_scoreboard` | Reference memory model, in-flight transaction tracking, out-of-order matching, read-after-write and strobe integrity checks. |
-| `axi4_coverage` | Functional coverage of burst type/length/size, address alignment, response codes, and channel back-pressure. |
-| `axi4_sva` | Assertion suite for handshake stability, payload stability, ordering rules, and reserved/illegal configurations. |
+|---|---|
+| `axi4_if` | Five AXI4 channels, clocking blocks, and modports |
+| `axi4_master_agent` | sequencer, master driver, and master monitor |
+| `axi4_slave_agent` | reactive subordinate driver and slave monitor |
+| `axi4_scoreboard` | transaction matching and byte-level data integrity |
+| `axi4_coverage` | burst, size, response, address, WSTRB, and timing coverage |
+| `axi4_sva` | handshake, stability, dependency, burst, lane, ID, and response checks |
 
----
+## Functional profile
 
-## Protocol Support
+- Configurable address, data, and ID widths; default 32/32/4.
+- FIXED, INCR, and WRAP bursts.
+- INCR burst length up to 256 beats; FIXED/WRAP restrictions enforced.
+- Narrow and unaligned transfers with Arm-style byte-lane calculation.
+- Exact 4KB burst-container checking.
+- Partial/sparse/zero-subset WSTRB support, restricted to legal transfer lanes.
+- AW/W independence: parallel, AW-before-W, and W-before-AW.
+- Multiple outstanding reads/writes and different-ID out-of-order completion.
+- Same-ID response order preservation.
+- Simplified exclusive access with EXOKAY/OKAY success/failure behavior.
+- OKAY, EXOKAY, SLVERR, and DECERR response paths.
+- Request-side and response-side backpressure.
+- Reset-mid-transaction recovery.
 
-- **Configurable widths** - independent `AXI4_ADDR_WIDTH`, `AXI4_DATA_WIDTH`, `AXI4_ID_WIDTH` parameters (default 32/32/4).
-- **Burst types** - FIXED, INCR, WRAP.
-- **Burst length** - up to 256 beats (INCR), per AXI4.
-- **Out-of-order** - ID-based tracking and matching of read/write responses.
-- **Outstanding transactions** - multi-threaded outstanding reads and writes.
-- **Exclusive access** - EXCLUSIVE/NORMAL locking with reservation tracking and EXOKAY/OKAY resolution.
-- **Write strobes** - per-byte-lane `WSTRB` routing verification.
-- **Write-channel ordering** - configurable AW/W interleaving (parallel, AW-first, W-first).
-- **Assertions** - handshake and payload stability, ordering, and illegal/reserved-value checks.
+<!-- Hoang Ho - Corrected AXI4 read-data interleaving statement -->
+The default learning subordinate sends one complete read burst at a time for deterministic waveforms. AXI4 can interleave read-data beats from different IDs when the subordinate supports it. The updated master driver and both monitors dispatch every accepted R beat by `RID`, so legal cross-ID interleaving is accepted even though it is not generated by default. Transactions sharing one ID remain ordered.
 
-Read data interleaving is intentionally unsupported, matching AXI4 (removed from AXI3): once a read burst begins, all beats share the same `RID` until `RLAST`.
+## Deliberate limits
 
----
+Optional attributes `AxCACHE`, `AxPROT`, `AxQOS`, and `AxREGION` are transported, held stable, compared, and covered, but no real cache, permission, QoS arbitration, or region-decode semantics are modeled. USER signals, ACE/coherency, AXI5 features, mixed-endian conversion, and full interconnect routing are out of scope.
 
-## Configuration
+The scoreboard uses a simple completed-transaction memory policy. Data-integrity tests serialize conflicting read/write access to the same location instead of claiming a universal system memory-ordering model.
 
-### Parameters (`src/cfg/axi4_types.sv`)
+## Repository layout
 
-| Parameter | Default | Description |
-|-----------|---------|-------------|
-| `AXI4_ADDR_WIDTH` | 32 | Address bus width |
-| `AXI4_DATA_WIDTH` | 32 | Data bus width |
-| `AXI4_STRB_WIDTH` | `DATA_WIDTH/8` | Write strobe width |
-| `AXI4_ID_WIDTH` | 4 | Transaction ID width |
-| `AXI4_LEN_WIDTH` | 8 | Burst length field width |
-
-### Enumerations (`src/cfg/axi4_types.sv`)
-
-- `axi4_burst_type_e` - `AXI4_BURST_FIXED` / `INCR` / `WRAP`
-- `axi4_resp_e` - `AXI4_RESP_OKAY` / `EXOKAY` / `SLVERR` / `DECERR`
-- `axi4_size_e` - `AXI4_SIZE_1B` … `AXI4_SIZE_128B` (bytes per beat = `2^SIZE`)
-- `axi4_lock_e` - `AXI4_LOCK_NORMAL` / `EXCLUSIVE`
-- `axi4_wr_order_e` - `AXI4_WR_PARALLEL` / `AW_BEFORE_W` / `W_BEFORE_AW`
-
----
-
-## Repository Layout
-
-```
+```text
 src/
-  axi4_if.sv            AXI4 interface, clocking blocks, modports
-  axi4_pkg.sv           VIP package (types, config, agents, env)
-  axi4_test_pkg.sv      Test package
-  tb_top.sv             Top-level testbench
-  cfg/                  Types, transaction item, agent config
-  mst/                  Master agent, driver, monitor, sequencer
-  slv/                  Slave agent, driver, monitor, sequencer
-  seq/                  Sequence library
-  env/                  Environment, scoreboard, coverage, env config
-  sva/                  Protocol assertions
-  test/                 Test library
-sim/                    QuestaSim Makefile and generated reports
-doc/                    Architecture diagram
+  axi4_if.sv
+  axi4_pkg.sv
+  axi4_test_pkg.sv
+  tb_top.sv
+  cfg/     protocol types, transaction, config
+  mst/     master agent, driver, monitor, sequencer
+  slv/     slave agent, driver, monitor, sequencer
+  seq/     sequence library
+  env/     environment, scoreboard, coverage
+  sva/     protocol assertions and SVA unit TB
+  test/    UVM tests
+sim/       QuestaSim Makefile and reports
+doc/       VPlan, test plan, contribution documentation
 ```
 
----
+## Test library
 
-## Test Library
+The positive regression list is defined by `TEST_LIST` in `sim/Makefile`.
 
-All tests extend `axi4_base_test`. The regression list is defined in `sim/Makefile` (`TEST_LIST`).
+| Group | Tests |
+|---|---|
+| Basic/random | `axi4_sanity_test`, `axi4_random_test` |
+| Burst/lanes | `axi4_all_burst_type_test`, `axi4_burst_sweep_test`, `axi4_narrow_burst_test`, `axi4_unaligned_test`, `axi4_strobe_test`, `axi4_4kb_boundary_test` |
+| ID/order | `axi4_outstanding_test`, `axi4_out_of_order_test`, `axi4_back_to_back_test`, `axi4_ooo_demo_test` |
+| Timing | `axi4_backpressure_test`, `axi4_response_backpressure_test`, `axi4_wr_order_demo_test`, `axi4_wlast_before_aw_test` |
+| Responses/exclusive | `axi4_error_response_test`, `axi4_exclusive_test`, `axi4_exclusive_fail_test`, `axi4_illegal_exclusive_test`, `axi4_exclusive_demo_test` |
+| Integrity/reset | `axi4_data_integrity_test`, `axi4_addr_integrity_test`, `axi4_reset_mid_burst_test` |
+| Attributes | `axi4_cache_prot_test` |
+| Hoang Ho directed gate | `axi4_helper_unit_test`, `axi4_spec_corner_test` |
 
-| Test | Purpose |
-|------|---------|
-| `axi4_sanity_test` | Basic write-then-read-back |
-| `axi4_random_test` | Randomized mixed traffic |
-| `axi4_all_burst_type_test` | FIXED, INCR, WRAP coverage |
-| `axi4_burst_sweep_test` | Sweep of burst configurations and sizes |
-| `axi4_narrow_burst_test` | Narrow (sub-bus-width) transfers |
-| `axi4_unaligned_test` | Unaligned address handling |
-| `axi4_strobe_test` | Full/sparse/partial write-strobe patterns |
-| `axi4_outstanding_test` | Multi-threaded outstanding transactions |
-| `axi4_out_of_order_test` | Out-of-order response return |
-| `axi4_back_to_back_test` | Back-to-back pipelined transactions |
-| `axi4_backpressure_test` | Handshake back-pressure / latency stress |
-| `axi4_exclusive_test` | Exclusive locks and EXOKAY resolution |
-| `axi4_exclusive_fail_test` | Exclusive-reservation invalidation corners |
-| `axi4_illegal_exclusive_test` | Negative test for illegal exclusive access |
-| `axi4_cache_prot_test` | Cache/protection attribute sweep |
-| `axi4_error_response_test` | SLVERR/DECERR response handling |
-| `axi4_wr_order_demo_test` | AW/W channel ordering modes |
-| `axi4_reset_mid_burst_test` | Mid-burst reset recovery |
-| `axi4_data_integrity_test` | Write-then-read-back with known data |
-| `axi4_addr_integrity_test` | Known-answer address/data integrity |
+<!-- Hoang Ho - New focused functional gate -->
+`axi4_helper_unit_test` checks exact lane/address equations. `axi4_spec_corner_test` verifies unaligned/narrow transfers, page-edge WRAP, same-ID order, and a continuously asserted WREADY subordinate.
 
----
-
-## Running Simulations
-
-The `sim/` directory provides a Makefile targeting Siemens QuestaSim/ModelSim. It requires a QuestaSim installation with a compiled UVM library.
+## Running with QuestaSim
 
 ```bash
-cd sim/
+cd sim
 
-make help                                    # list targets and variables
-make run                                     # default test (axi4_sanity_test), random seed
-make run TESTNAME=axi4_random_test SEED=42   # specific test and seed
-make gui TESTNAME=axi4_outstanding_test      # GUI with AXI4 waveform view
-make -j8 regress NUM_RUNS=5                  # parallel regression, 5 runs per test
-make cov_report                              # merge .ucdb and emit HTML coverage
-make clean                                   # remove build, wave, and coverage artifacts
+make help
+make run TESTNAME=axi4_sanity_test SEED=1
+make spec_smoke
+make -j8 regress NUM_RUNS=5
+make cov_report
 ```
 
-Overridable variables: `TESTNAME`, `SEED`, `UVM_VERBOSITY`, `NUM_RUNS`, `USE_COVERAGE`, `TEST_LIST`.
+`make spec_smoke` runs:
 
-The merged HTML coverage report is written to `sim/report/cov_html/index.html`.
+```text
+axi4_helper_unit_test                 seed 1
+axi4_spec_corner_test                 seed 1
+axi4_4kb_boundary_test                seed 1
+axi4_response_backpressure_test       seed 22883092
+axi4_response_backpressure_test       seed 68865829
+```
 
----
+The Makefile treats a non-zero simulator status, any non-zero UVM_ERROR/UVM_FATAL count, or `=== TEST FAILED ===` as a failing command. Coverage merging excludes an old `merged.ucdb` and regenerates the HTML directory.
 
-## AI Disclaimer
+## Contribution markers
 
-This codebase was developed and refactored with the assistance of AI tools, used for boilerplate scaffolding and testbench optimization. All logic, test suites, and simulation configurations have been reviewed and validated against the AMBA AXI4 specification.
+<!-- Hoang Ho -->
+Huy Le's existing author headers and unmarked source are retained. New or materially modified SystemVerilog blocks are marked `//Hoang Ho`; entirely new source files begin with `//Hoang Ho - New file`. See:
+
+- `doc/CODE_OWNERSHIP_MAP.md`
+- `doc/HUY_LE_VS_HOANG_HO_DIFF.md`
+- `doc/CONTRIBUTION_GUIDE.md`
+- `doc/AXI4_FULL_VPLAN.md`
+- `doc/AXI4_FULL_TESTPLAN.md`
+
+## Validation status
+
+The response-backpressure repair was previously run successfully on QuestaSim for seeds `22883092` and `68865829`. The larger Arm-functional patch in this package has been statically reviewed, but the artifact environment does not contain QuestaSim. Run `make clean`, `make spec_smoke`, the complete regression, and coverage review on the target server before publishing or opening a pull request.
+
+## License and attribution
+
+The original repository uses the MIT License. Preserve the original license, Huy Le attribution, and contributor markers when publishing this extension.

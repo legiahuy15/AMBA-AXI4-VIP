@@ -37,7 +37,6 @@ class axi4_cache_prot_seq extends axi4_base_sequence;
                 addr  inside {[addr_lo : addr_hi]};
                 addr  < 32'hE000_0000;
                 id    inside {[id_lo   : id_hi]};
-                lock  == AXI4_LOCK_NORMAL;
                 cache == c;
                 prot  == c % 8;
             }) `uvm_fatal(get_type_name(), $sformatf("Randomization failed for cache/prot write #%0d", c))
@@ -51,7 +50,6 @@ class axi4_cache_prot_seq extends axi4_base_sequence;
                 addr  inside {[addr_lo : addr_hi]};
                 addr  < 32'hE000_0000;
                 id    inside {[id_lo   : id_hi]};
-                lock  == AXI4_LOCK_NORMAL;
                 cache == c;
                 prot  == c % 8;
             }) `uvm_fatal(get_type_name(), $sformatf("Randomization failed for cache/prot read #%0d", c))

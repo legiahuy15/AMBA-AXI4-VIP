@@ -3,14 +3,14 @@
 // Project     : AXI4 VIP
 // Author      : Huy Le
 // Description : Exclusive access demo test for waveform capture.
-//               Runs axi4_exclusive_demo_seq: three transactions to a fixed
-//               address/ID, phased sequentially (each waits for full
-//               completion), so they never overlap:
+//               Runs the exclusive sequence for exactly ONE iteration at a
+//               fixed address and ID, producing a clean three-transaction
+//               window:
 //                 1. Exclusive read   -> RRESP = EXOKAY
 //                 2. Exclusive write  -> BRESP = EXOKAY (reservation held)
 //                 3. Exclusive write  -> BRESP = OKAY   (no reservation)
-//               Slave ready/response delays are stretched so each phase is
-//               easy to read on the waveform.
+//               Minimal, deterministic traffic - ideal for report/slide
+//               waveform illustration of AWLOCK/ARLOCK and EXOKAY resolution.
 //               This file is `included inside axi4_test_pkg.sv.
 //==============================================================================
 
@@ -25,26 +25,23 @@ class axi4_exclusive_demo_test extends axi4_base_test;
         super.new(name, parent);
     endfunction : new
 
-    // =========================================================================
-    // Build phase - stretch slave timing so each phase is easy to read
-    // =========================================================================
-    function void build_phase(uvm_phase phase);
-        super.build_phase(phase);
-        env_cfg.slave_agent_cfg.ready_delay_min = 2;
-        env_cfg.slave_agent_cfg.ready_delay_max = 3;
-        env_cfg.slave_agent_cfg.resp_delay_min  = 2;
-        env_cfg.slave_agent_cfg.resp_delay_max  = 3;
-    endfunction : build_phase
-
     task run_phase(uvm_phase phase);
-        axi4_exclusive_demo_seq excl_seq;
+        axi4_exclusive_seq excl_seq;
         phase.raise_objection(this, "axi4_exclusive_demo_test: starting");
 
         `uvm_info(get_type_name(),
-                  "Starting exclusive demo test (3 phased transactions, fixed addr/ID)",
+                  "Starting exclusive demo test (1 iteration, fixed addr/ID)",
                   UVM_LOW)
 
-        excl_seq = axi4_exclusive_demo_seq::type_id::create("excl_seq");
+        excl_seq = axi4_exclusive_seq::type_id::create("excl_seq");
+        // Single iteration -> exactly 3 transactions for a clean waveform
+        excl_seq.num_iterations = 1;
+        // Pin address and ID: urandom_range(x,x) == x -> deterministic
+        excl_seq.addr_lo = 32'h0000_1000;
+        excl_seq.addr_hi = 32'h0000_1000;
+        excl_seq.id_lo   = 4'h5;
+        excl_seq.id_hi   = 4'h5;
+
         excl_seq.start(env.master_agent.sqr);
 
         // Drain time

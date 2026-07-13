@@ -1,4 +1,9 @@
 //==============================================================================
+// OWNERSHIP NOTE
+//   Original unmarked code in this file : Huy Le / original AXI4-VIP repo
+//   Blocks marked //Hoang Ho            : Hoang Ho functional/spec fixes
+//==============================================================================
+//==============================================================================
 // File        : axi4_types.sv
 // Project     : AXI4 VIP
 // Author      : Huy Le
@@ -102,3 +107,151 @@
     class axi4_event_wrapper;
         event ev;
     endclass
+
+    //Hoang Ho - BEGIN: shared AXI4 address, lane, and 4KB helper functions
+    // These helpers centralize the functional rules used by the transaction,
+    // slave model, scoreboard, and coverage. Keeping one implementation avoids
+    // common-mode drift between components.
+    typedef bit [AXI4_ADDR_WIDTH-1:0] axi4_addr_t;
+    typedef bit [AXI4_STRB_WIDTH-1:0] axi4_strb_t;
+
+    function automatic int unsigned axi4_num_bytes(bit [2:0] size_i);
+        return (1 << size_i);
+    endfunction : axi4_num_bytes
+
+    function automatic axi4_addr_t axi4_aligned_addr(
+        axi4_addr_t start_addr,
+        bit [2:0]   size_i
+    );
+        int unsigned nbytes;
+        nbytes = axi4_num_bytes(size_i);
+        return (start_addr / nbytes) * nbytes;
+    endfunction : axi4_aligned_addr
+
+    function automatic axi4_addr_t axi4_calc_beat_addr(
+        axi4_addr_t          start_addr,
+        int unsigned         beat_idx,
+        bit [2:0]            size_i,
+        axi4_burst_type_e    burst_i,
+        bit [7:0]            len_i
+    );
+        int unsigned nbytes;
+        int unsigned beats;
+        int unsigned total_bytes;
+        axi4_addr_t aligned_start;
+        axi4_addr_t wrap_boundary;
+        axi4_addr_t addr_i;
+
+        nbytes       = axi4_num_bytes(size_i);
+        beats        = len_i + 1;
+        aligned_start = axi4_aligned_addr(start_addr, size_i);
+
+        case (burst_i)
+            AXI4_BURST_FIXED: addr_i = start_addr;
+
+            AXI4_BURST_INCR: begin
+                if (beat_idx == 0)
+                    addr_i = start_addr;
+                else
+                    addr_i = aligned_start + beat_idx * nbytes;
+            end
+
+            AXI4_BURST_WRAP: begin
+                total_bytes  = nbytes * beats;
+                wrap_boundary = (start_addr / total_bytes) * total_bytes;
+                if (beat_idx == 0) begin
+                    addr_i = start_addr;
+                end else begin
+                    addr_i = aligned_start + beat_idx * nbytes;
+                    while (addr_i >= wrap_boundary + total_bytes)
+                        addr_i = addr_i - total_bytes;
+                end
+            end
+
+            default: addr_i = start_addr;
+        endcase
+
+        return addr_i;
+    endfunction : axi4_calc_beat_addr
+
+    function automatic axi4_addr_t axi4_bus_word_base(axi4_addr_t beat_addr);
+        return (beat_addr / AXI4_STRB_WIDTH) * AXI4_STRB_WIDTH;
+    endfunction : axi4_bus_word_base
+
+    function automatic axi4_strb_t axi4_calc_legal_lane_mask(
+        axi4_addr_t          start_addr,
+        int unsigned         beat_idx,
+        bit [2:0]            size_i,
+        axi4_burst_type_e    burst_i,
+        bit [7:0]            len_i
+    );
+        axi4_addr_t beat_addr;
+        axi4_addr_t bus_base;
+        axi4_addr_t aligned_start;
+        axi4_strb_t mask;
+        int unsigned nbytes;
+        int unsigned lower_lane;
+        int unsigned upper_lane;
+        bit first_transfer_rules;
+
+        beat_addr            = axi4_calc_beat_addr(start_addr, beat_idx, size_i, burst_i, len_i);
+        bus_base             = axi4_bus_word_base(beat_addr);
+        aligned_start        = axi4_aligned_addr(start_addr, size_i);
+        nbytes               = axi4_num_bytes(size_i);
+        lower_lane           = beat_addr - bus_base;
+        first_transfer_rules = (beat_idx == 0) || (burst_i == AXI4_BURST_FIXED);
+
+        // For an unaligned first transfer, bytes below AxADDR are not part of
+        // the transfer. The lane range must not wrap around within one beat.
+        if (first_transfer_rules && ((start_addr % nbytes) != 0))
+            upper_lane = (aligned_start + nbytes - 1) - bus_base;
+        else
+            upper_lane = lower_lane + nbytes - 1;
+
+        mask = '0;
+        for (int lane = lower_lane; lane <= upper_lane; lane++) begin
+            if (lane < AXI4_STRB_WIDTH)
+                mask[lane] = 1'b1;
+        end
+        return mask;
+    endfunction : axi4_calc_legal_lane_mask
+
+    function automatic bit axi4_burst_crosses_4kb(
+        axi4_addr_t          start_addr,
+        bit [2:0]            size_i,
+        axi4_burst_type_e    burst_i,
+        bit [7:0]            len_i
+    );
+        longint unsigned first_byte;
+        longint unsigned last_byte;
+        longint unsigned aligned_start;
+        longint unsigned wrap_boundary;
+        longint unsigned nbytes;
+        longint unsigned beats;
+        longint unsigned total_bytes;
+
+        nbytes        = axi4_num_bytes(size_i);
+        beats         = len_i + 1;
+        total_bytes   = nbytes * beats;
+        aligned_start = (start_addr / nbytes) * nbytes;
+
+        case (burst_i)
+            AXI4_BURST_FIXED: begin
+                first_byte = start_addr;
+                last_byte  = aligned_start + nbytes - 1;
+            end
+            AXI4_BURST_INCR: begin
+                first_byte = start_addr;
+                last_byte  = aligned_start + total_bytes - 1;
+            end
+            AXI4_BURST_WRAP: begin
+                wrap_boundary = (start_addr / total_bytes) * total_bytes;
+                first_byte = wrap_boundary;
+                last_byte  = wrap_boundary + total_bytes - 1;
+            end
+            default: return 1'b1;
+        endcase
+
+        return ((first_byte >> 12) != (last_byte >> 12));
+    endfunction : axi4_burst_crosses_4kb
+    //Hoang Ho - END: shared AXI4 address, lane, and 4KB helper functions

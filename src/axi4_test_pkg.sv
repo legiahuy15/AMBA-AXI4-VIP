@@ -1,3 +1,8 @@
+//=============================================================================
+// OWNERSHIP NOTE
+//   Original unmarked code in this file : Huy Le / original AXI4-VIP repo
+//   Blocks marked //Hoang Ho            : Hoang Ho functional/spec fixes
+//=============================================================================
 //==============================================================================
 // File        : axi4_test_pkg.sv
 // Project     : AXI4 VIP
@@ -40,6 +45,12 @@ package axi4_test_pkg;
     `include "test/axi4_data_integrity_test.sv"
     `include "test/axi4_addr_integrity_test.sv"
     `include "test/axi4_backpressure_test.sv"
+    //Hoang Ho - BEGIN: include new spec-compliance tests
+    `include "test/axi4_4kb_boundary_test.sv"
+    `include "test/axi4_response_backpressure_test.sv"
+    `include "test/axi4_spec_corner_test.sv" //Hoang Ho
+    `include "test/axi4_helper_unit_test.sv" //Hoang Ho
+    //Hoang Ho - END: include new spec-compliance tests
 
     // Demo tests - minimal, deterministic traffic for waveform capture
     `include "test/axi4_exclusive_demo_test.sv"

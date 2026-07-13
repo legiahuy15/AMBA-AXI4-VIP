@@ -1,4 +1,9 @@
 //=============================================================================
+// OWNERSHIP NOTE
+//   Original unmarked code in this file : Huy Le / original AXI4-VIP repo
+//   Blocks marked //Hoang Ho            : Hoang Ho functional/spec fixes
+//=============================================================================
+//=============================================================================
 // File        : axi4_sva.sv
 // Project     : AXI4 VIP
 // Author      : Huy Le
@@ -71,6 +76,103 @@ module axi4_sva #(
     // Local parameters
     //-------------------------------------------------------------------------
     localparam STRB_WIDTH = DATA_WIDTH / 8;
+
+
+    //Hoang Ho - BEGIN: local AXI4 helper functions used by protocol assertions
+    function automatic longint unsigned f_num_bytes(logic [2:0] size_i);
+        return (64'd1 << size_i);
+    endfunction : f_num_bytes
+
+    function automatic bit f_burst_crosses_4kb(
+        logic [ADDR_WIDTH-1:0] addr_i,
+        logic [2:0]            size_i,
+        logic [1:0]            burst_i,
+        logic [7:0]            len_i
+    );
+        longint unsigned nbytes;
+        longint unsigned beats;
+        longint unsigned total_bytes;
+        longint unsigned aligned_addr;
+        longint unsigned first_byte;
+        longint unsigned last_byte;
+        longint unsigned wrap_boundary;
+
+        nbytes      = f_num_bytes(size_i);
+        beats       = len_i + 1;
+        total_bytes = nbytes * beats;
+        aligned_addr = (addr_i / nbytes) * nbytes;
+
+        case (burst_i)
+            2'b00: begin // FIXED
+                first_byte = addr_i;
+                last_byte  = aligned_addr + nbytes - 1;
+            end
+            2'b01: begin // INCR
+                first_byte = addr_i;
+                last_byte  = aligned_addr + total_bytes - 1;
+            end
+            2'b10: begin // WRAP
+                wrap_boundary = (addr_i / total_bytes) * total_bytes;
+                first_byte = wrap_boundary;
+                last_byte  = wrap_boundary + total_bytes - 1;
+            end
+            default: return 1'b1;
+        endcase
+
+        return ((first_byte >> 12) != (last_byte >> 12));
+    endfunction : f_burst_crosses_4kb
+
+    function automatic logic [STRB_WIDTH-1:0] f_legal_wstrb_mask(
+        logic [ADDR_WIDTH-1:0] addr_i,
+        int unsigned           beat_idx,
+        logic [2:0]            size_i,
+        logic [1:0]            burst_i,
+        logic [7:0]            len_i
+    );
+        longint unsigned nbytes;
+        longint unsigned beats;
+        longint unsigned total_bytes;
+        longint unsigned aligned_start;
+        longint unsigned wrap_boundary;
+        longint unsigned beat_addr;
+        longint unsigned bus_base;
+        int unsigned lower_lane;
+        int unsigned upper_lane;
+        logic [STRB_WIDTH-1:0] mask;
+
+        nbytes       = f_num_bytes(size_i);
+        beats        = len_i + 1;
+        total_bytes  = nbytes * beats;
+        aligned_start = (addr_i / nbytes) * nbytes;
+
+        case (burst_i)
+            2'b00: beat_addr = addr_i;
+            2'b01: beat_addr = (beat_idx == 0) ? addr_i
+                                               : aligned_start + beat_idx*nbytes;
+            2'b10: begin
+                wrap_boundary = (addr_i / total_bytes) * total_bytes;
+                beat_addr = (beat_idx == 0) ? addr_i
+                                            : aligned_start + beat_idx*nbytes;
+                while (beat_addr >= wrap_boundary + total_bytes)
+                    beat_addr = beat_addr - total_bytes;
+            end
+            default: beat_addr = addr_i;
+        endcase
+
+        bus_base  = (beat_addr / STRB_WIDTH) * STRB_WIDTH;
+        lower_lane = beat_addr - bus_base;
+        if (((beat_idx == 0) || (burst_i == 2'b00)) && ((addr_i % nbytes) != 0))
+            upper_lane = (aligned_start + nbytes - 1) - bus_base;
+        else
+            upper_lane = lower_lane + nbytes - 1;
+
+        mask = '0;
+        for (int lane = lower_lane; lane <= upper_lane; lane++)
+            if (lane < STRB_WIDTH)
+                mask[lane] = 1'b1;
+        return mask;
+    endfunction : f_legal_wstrb_mask
+    //Hoang Ho - END: local AXI4 helper functions used by protocol assertions
 
     //-------------------------------------------------------------------------
     // Internal state tracking
@@ -193,16 +295,15 @@ module axi4_sva #(
             $stable(AWQOS)    && $stable(AWREGION);
     endproperty
 
-    // W Channel payload
-    //  Only check stability when WVALID was high AND no handshake occurred
-    //  on the previous cycle. After a handshake (WVALID && WREADY), the
-    //  master may legitimately change data for the next beat while keeping
-    //  WVALID asserted.
+    //Hoang Ho - BEGIN: first-stall-cycle-safe W payload stability check
+    // If a W beat is stalled, the same beat and WVALID must still be present at
+    // the next clock edge. A payload change is legal only after a handshake.
     property p_w_payload_stable;
         @(posedge clk) disable iff (!rst_n)
-        (WVALID && !WREADY && $past(WVALID) && !$past(WREADY)) |=>
-            $stable(WDATA) && $stable(WSTRB) && $stable(WLAST);
+        WVALID && !WREADY |=>
+            WVALID && $stable(WDATA) && $stable(WSTRB) && $stable(WLAST);
     endproperty
+    //Hoang Ho - END: first-stall-cycle-safe W payload stability check
 
     // B Channel payload
     property p_b_payload_stable;
@@ -342,6 +443,74 @@ module axi4_sva #(
     int unsigned ar_len_fifo[logic [ID_WIDTH-1:0]][$];
     int unsigned r_beat_cnt[logic [ID_WIDTH-1:0]];
 
+    //Hoang Ho - BEGIN: transaction-aware BVALID/BID dependency tracker
+    // W data has no ID in AXI4, so completed W bursts pair with accepted AW
+    // requests in AW order. A B response becomes legal only after one such
+    // address/data pair existed before the current clock edge. Different BID
+    // values may complete out of order; each BID must still name an eligible
+    // outstanding write transaction.
+    int unsigned aw_done_for_b;
+    int unsigned wlast_done_for_b;
+    logic [ID_WIDTH-1:0] aw_id_unpaired_q[$];
+    int unsigned         w_bursts_unpaired;
+    int unsigned         b_eligible_by_id[logic [ID_WIDTH-1:0]];
+
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            aw_done_for_b    = 0;
+            wlast_done_for_b = 0;
+            aw_id_unpaired_q.delete();
+            w_bursts_unpaired = 0;
+            b_eligible_by_id.delete();
+        end else begin
+            // BVALID is checked against state created on an earlier edge. This
+            // intentionally rejects BVALID asserted on the same edge as the
+            // AW or final-W handshake that completes the transaction.
+            if (BVALID) begin
+                BVALID_AFTER_COMPLETE_WRITE : assert (
+                    b_eligible_by_id.exists(BID) &&
+                    b_eligible_by_id[BID] > 0)
+                    else $error("[SVA] BVALID/BID=0x%0h has no completed AW+WLAST transaction", BID);
+            end
+
+            if (BVALID && BREADY &&
+                b_eligible_by_id.exists(BID) &&
+                b_eligible_by_id[BID] > 0) begin
+                b_eligible_by_id[BID] = b_eligible_by_id[BID] - 1;
+                if (b_eligible_by_id[BID] == 0)
+                    b_eligible_by_id.delete(BID);
+            end
+
+            if (AWVALID && AWREADY) begin
+                aw_id_unpaired_q.push_back(AWID);
+                aw_done_for_b = aw_done_for_b + 1;
+            end
+
+            if (WVALID && WREADY && WLAST) begin
+                w_bursts_unpaired = w_bursts_unpaired + 1;
+                wlast_done_for_b   = wlast_done_for_b + 1;
+            end
+
+            // Pair W bursts and AW requests in protocol order for future BVALID.
+            while ((aw_id_unpaired_q.size() > 0) && (w_bursts_unpaired > 0)) begin
+                logic [ID_WIDTH-1:0] paired_id;
+                paired_id = aw_id_unpaired_q.pop_front();
+                if (!b_eligible_by_id.exists(paired_id))
+                    b_eligible_by_id[paired_id] = 0;
+                b_eligible_by_id[paired_id] = b_eligible_by_id[paired_id] + 1;
+                w_bursts_unpaired = w_bursts_unpaired - 1;
+            end
+
+            if (BVALID && BREADY) begin
+                if (aw_done_for_b > 0)
+                    aw_done_for_b = aw_done_for_b - 1;
+                if (wlast_done_for_b > 0)
+                    wlast_done_for_b = wlast_done_for_b - 1;
+            end
+        end
+    end
+    //Hoang Ho - END: transaction-aware BVALID/BID dependency tracker
+
     // Track AW/W handshakes and check WLAST positioning. AW is captured before
     // the W check, so an AW handshaking on the same edge is reflected when that
     // W beat is judged.
@@ -415,18 +584,20 @@ module axi4_sva #(
             ar_len_fifo.delete();
             r_beat_cnt.delete();
         end else begin
-            // Capture ARLEN when AR handshakes
-            if (ARVALID && ARREADY) begin
-                ar_len_fifo[ARID].push_back(ARLEN);
+            //Hoang Ho - BEGIN: enforce AR-before-R using pre-edge outstanding state
+            // A newly handshaken AR on this same edge cannot justify RVALID that
+            // was already HIGH before the edge. Therefore R is checked before
+            // the current AR request is appended.
+            if (RVALID) begin
+                RVALID_AFTER_AR : assert (ar_len_fifo.exists(RID) && ar_len_fifo[RID].size() > 0)
+                    else $error("[SVA] RVALID asserted without a previously outstanding AR for RID=0x%0h", RID);
             end
 
-            // R handshake checks
             if (RVALID && RREADY) begin
                 logic [ID_WIDTH-1:0] cur_rid;
                 cur_rid = RID;
-                if (!r_beat_cnt.exists(cur_rid)) begin
+                if (!r_beat_cnt.exists(cur_rid))
                     r_beat_cnt[cur_rid] = 0;
-                end
 
                 if (ar_len_fifo.exists(cur_rid) && ar_len_fifo[cur_rid].size() > 0) begin
                     if (r_beat_cnt[cur_rid] == ar_len_fifo[cur_rid][0]) begin
@@ -446,15 +617,19 @@ module axi4_sva #(
                 if (RLAST) begin
                     if (ar_len_fifo.exists(cur_rid) && ar_len_fifo[cur_rid].size() > 0) begin
                         void'(ar_len_fifo[cur_rid].pop_front());
-                        if (ar_len_fifo[cur_rid].size() == 0) begin
+                        if (ar_len_fifo[cur_rid].size() == 0)
                             ar_len_fifo.delete(cur_rid);
-                        end
                     end
                     r_beat_cnt[cur_rid] = 0;
                 end else begin
                     r_beat_cnt[cur_rid] = r_beat_cnt[cur_rid] + 1;
                 end
             end
+
+            // Capture this cycle's AR only after all R checks above.
+            if (ARVALID && ARREADY)
+                ar_len_fifo[ARID].push_back(ARLEN);
+            //Hoang Ho - END: enforce AR-before-R using pre-edge outstanding state
         end
     end
 
@@ -501,6 +676,28 @@ module axi4_sva #(
         else $error("[SVA] ARSIZE exceeds data bus width (2^%0d > %0d bytes)",
                     ARSIZE, DATA_WIDTH / 8);
 
+    //Hoang Ho - BEGIN: exact 4KB boundary checks for FIXED/INCR/WRAP
+    property p_aw_4kb_boundary;
+        @(posedge clk) disable iff (!rst_n)
+        (AWVALID && AWREADY) |->
+            !f_burst_crosses_4kb(AWADDR, AWSIZE, AWBURST, AWLEN);
+    endproperty
+
+    property p_ar_4kb_boundary;
+        @(posedge clk) disable iff (!rst_n)
+        (ARVALID && ARREADY) |->
+            !f_burst_crosses_4kb(ARADDR, ARSIZE, ARBURST, ARLEN);
+    endproperty
+
+    AW_4KB_BOUNDARY : assert property (p_aw_4kb_boundary)
+        else $error("[SVA] AW burst crosses 4KB boundary: AWADDR=0x%08h AWLEN=%0d AWSIZE=%0d AWBURST=%0b",
+                    AWADDR, AWLEN, AWSIZE, AWBURST);
+
+    AR_4KB_BOUNDARY : assert property (p_ar_4kb_boundary)
+        else $error("[SVA] AR burst crosses 4KB boundary: ARADDR=0x%08h ARLEN=%0d ARSIZE=%0d ARBURST=%0b",
+                    ARADDR, ARLEN, ARSIZE, ARBURST);
+    //Hoang Ho - END: exact 4KB boundary checks for FIXED/INCR/WRAP
+
     //-------------------------------------------------------------------------
     // WRAP BURST - length must be 2, 4, 8, or 16 (LEN = 1, 3, 7, 15)
     //-------------------------------------------------------------------------
@@ -523,6 +720,27 @@ module axi4_sva #(
     WRAP_AR_LEN : assert property (p_wrap_ar_len)
         else $error("[SVA] WRAP burst ARLEN=%0d is invalid (must be 1,3,7,15)", ARLEN);
 
+
+    //Hoang Ho - BEGIN: AXI4 WRAP start-address alignment checks
+    property p_wrap_aw_align;
+        @(posedge clk) disable iff (!rst_n)
+        (AWVALID && AWREADY && AWBURST == 2'b10) |->
+            ((AWADDR % (1 << AWSIZE)) == 0);
+    endproperty
+
+    property p_wrap_ar_align;
+        @(posedge clk) disable iff (!rst_n)
+        (ARVALID && ARREADY && ARBURST == 2'b10) |->
+            ((ARADDR % (1 << ARSIZE)) == 0);
+    endproperty
+
+    WRAP_AW_ALIGN : assert property (p_wrap_aw_align)
+        else $error("[SVA] WRAP AWADDR=0x%08h is not aligned to AWSIZE=%0d", AWADDR, AWSIZE);
+
+    WRAP_AR_ALIGN : assert property (p_wrap_ar_align)
+        else $error("[SVA] WRAP ARADDR=0x%08h is not aligned to ARSIZE=%0d", ARADDR, ARSIZE);
+    //Hoang Ho - END: AXI4 WRAP start-address alignment checks
+
     //-------------------------------------------------------------------------
     // FIXED BURST - length must not exceed 16 (LEN <= 15)
     //-------------------------------------------------------------------------
@@ -542,6 +760,124 @@ module axi4_sva #(
 
     FIXED_AR_LEN : assert property (p_fixed_ar_len)
         else $error("[SVA] FIXED burst ARLEN=%0d exceeds maximum of 15", ARLEN);
+
+    //Hoang Ho - BEGIN: EXOKAY legality and WSTRB lane checks
+    logic aw_exclusive_by_id[logic [ID_WIDTH-1:0]][$];
+    logic ar_exclusive_by_id[logic [ID_WIDTH-1:0]][$];
+
+    typedef struct packed {
+        logic [ADDR_WIDTH-1:0] addr;
+        logic [7:0]            len;
+        logic [2:0]            size;
+        logic [1:0]            burst;
+    } aw_lane_ctrl_t;
+
+    aw_lane_ctrl_t aw_lane_fifo[$];
+    logic [STRB_WIDTH-1:0] w_before_aw_strb[$];
+    logic                  w_before_aw_last[$];
+    int unsigned           w_lane_beat_idx;
+
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            aw_exclusive_by_id.delete();
+            ar_exclusive_by_id.delete();
+            aw_lane_fifo.delete();
+            w_before_aw_strb.delete();
+            w_before_aw_last.delete();
+            w_lane_beat_idx <= 0;
+        end else begin
+            if (AWVALID && AWREADY) begin
+                aw_lane_ctrl_t ctrl;
+                ctrl = '{addr:AWADDR, len:AWLEN, size:AWSIZE, burst:AWBURST};
+                aw_exclusive_by_id[AWID].push_back(AWLOCK);
+
+                // W-before-AW beats are checked immediately when their address
+                // control arrives. Otherwise retain the AW for future W beats.
+                if (w_before_aw_strb.size() > 0) begin
+                    int unsigned idx;
+                    bit burst_done;
+                    idx = 0;
+                    burst_done = 0;
+                    while ((w_before_aw_strb.size() > 0) && !burst_done) begin
+                        logic [STRB_WIDTH-1:0] legal_mask;
+                        logic [STRB_WIDTH-1:0] observed_strb;
+                        observed_strb = w_before_aw_strb.pop_front();
+                        burst_done    = w_before_aw_last.pop_front();
+                        legal_mask    = f_legal_wstrb_mask(AWADDR, idx, AWSIZE, AWBURST, AWLEN);
+                        WSTRB_LEGAL_W_BEFORE_AW : assert ((observed_strb & ~legal_mask) == '0)
+                            else $error("[SVA] Illegal WSTRB on W-before-AW beat=%0d STRB=0b%0b legal=0b%0b",
+                                        idx, observed_strb, legal_mask);
+                        idx++;
+                    end
+                    // AW can legally arrive in the middle of a W burst. Keep
+                    // its control fields and continue checking subsequent beats.
+                    if (!burst_done) begin
+                        aw_lane_fifo.push_back(ctrl);
+                        w_lane_beat_idx = idx;
+                    end
+                end else begin
+                    aw_lane_fifo.push_back(ctrl);
+                end
+            end
+
+            if (ARVALID && ARREADY)
+                ar_exclusive_by_id[ARID].push_back(ARLOCK);
+
+            if (WVALID && WREADY) begin
+                if (aw_lane_fifo.size() > 0) begin
+                    logic [STRB_WIDTH-1:0] legal_mask;
+                    legal_mask = f_legal_wstrb_mask(aw_lane_fifo[0].addr,
+                                                    w_lane_beat_idx,
+                                                    aw_lane_fifo[0].size,
+                                                    aw_lane_fifo[0].burst,
+                                                    aw_lane_fifo[0].len);
+                    WSTRB_LEGAL_CHECK : assert ((WSTRB & ~legal_mask) == '0)
+                        else $error("[SVA] Illegal WSTRB beat=%0d STRB=0b%0b legal=0b%0b",
+                                    w_lane_beat_idx, WSTRB, legal_mask);
+                    if (WLAST) begin
+                        void'(aw_lane_fifo.pop_front());
+                        w_lane_beat_idx <= 0;
+                    end else begin
+                        w_lane_beat_idx <= w_lane_beat_idx + 1;
+                    end
+                end else begin
+                    w_before_aw_strb.push_back(WSTRB);
+                    w_before_aw_last.push_back(WLAST);
+                end
+            end
+
+            if (BVALID && BREADY) begin
+                if (BRESP == 2'b01) begin
+                    BRESP_EXOKAY_ONLY_EXCLUSIVE : assert (
+                        aw_exclusive_by_id.exists(BID) &&
+                        aw_exclusive_by_id[BID].size() > 0 &&
+                        aw_exclusive_by_id[BID][0])
+                        else $error("[SVA] BRESP=EXOKAY for non-exclusive BID=0x%0h", BID);
+                end
+                if (aw_exclusive_by_id.exists(BID) && aw_exclusive_by_id[BID].size() > 0) begin
+                    void'(aw_exclusive_by_id[BID].pop_front());
+                    if (aw_exclusive_by_id[BID].size() == 0)
+                        aw_exclusive_by_id.delete(BID);
+                end
+            end
+
+            if (RVALID && RREADY) begin
+                if (RRESP == 2'b01) begin
+                    RRESP_EXOKAY_ONLY_EXCLUSIVE : assert (
+                        ar_exclusive_by_id.exists(RID) &&
+                        ar_exclusive_by_id[RID].size() > 0 &&
+                        ar_exclusive_by_id[RID][0])
+                        else $error("[SVA] RRESP=EXOKAY for non-exclusive RID=0x%0h", RID);
+                end
+                if (RLAST && ar_exclusive_by_id.exists(RID) && ar_exclusive_by_id[RID].size() > 0) begin
+                    void'(ar_exclusive_by_id[RID].pop_front());
+                    if (ar_exclusive_by_id[RID].size() == 0)
+                        ar_exclusive_by_id.delete(RID);
+                end
+            end
+        end
+    end
+    //Hoang Ho - END: EXOKAY legality and WSTRB lane checks
 
     //-------------------------------------------------------------------------
     // RESPONSE VALUE - BRESP/RRESP must be valid
@@ -565,32 +901,34 @@ module axi4_sva #(
     RRESP_KNOWN : assert property (p_rresp_known)
         else $error("[SVA] RRESP is X or Z at handshake");
 
-    //-------------------------------------------------------------------------
-    // READ INTERLEAVING CONSTRAINT - No read data interleaving is allowed
-    //     Once RVALID & RREADY handshakes, all beats must be for the same RID
-    //     until RLAST is asserted and handshaked.
-    //-------------------------------------------------------------------------
-    logic                    active_r_burst;
-    logic [ID_WIDTH-1:0]     active_rid;
+    //Hoang Ho - BEGIN: legal read interleaving observation
+    // AXI4 permits R beats from different IDs to interleave. Same-ID ordering
+    // is checked by the AR/R per-ID FIFOs above, so RID changes are evidence to
+    // cover rather than protocol violations.
+    logic                    have_previous_r_beat;
+    logic [ID_WIDTH-1:0]     previous_rid;
+    logic                    previous_r_was_last;
+    logic                    r_interleave_pulse;
 
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
-            active_r_burst <= 1'b0;
-            active_rid     <= '0;
-        end else if (RVALID && RREADY) begin
-            if (!active_r_burst) begin
-                active_r_burst <= !RLAST;
-                active_rid     <= RID;
-            end else begin
-                READ_NO_INTERLEAVE : assert (RID == active_rid)
-                    else $error("[SVA] Violation: Read Data Interleaving detected! RID changed from 0x%0h to 0x%0h before RLAST was asserted.",
-                                active_rid, RID);
-                if (RLAST) begin
-                    active_r_burst <= 1'b0;
-                end
+            have_previous_r_beat <= 1'b0;
+            previous_rid         <= '0;
+            previous_r_was_last  <= 1'b1;
+            r_interleave_pulse   <= 1'b0;
+        end else begin
+            r_interleave_pulse <= 1'b0;
+            if (RVALID && RREADY) begin
+                r_interleave_pulse <= have_previous_r_beat &&
+                                      !previous_r_was_last &&
+                                      (RID != previous_rid);
+                have_previous_r_beat <= 1'b1;
+                previous_rid         <= RID;
+                previous_r_was_last  <= RLAST;
             end
         end
     end
+    //Hoang Ho - END: legal read interleaving observation
 
     //-------------------------------------------------------------------------
     // COVER PROPERTIES - Track protocol scenarios for functional coverage
@@ -602,6 +940,8 @@ module axi4_sva #(
     B_HANDSHAKE_COV  : cover property (@(posedge clk) disable iff (!rst_n) BVALID  && BREADY);
     AR_HANDSHAKE_COV : cover property (@(posedge clk) disable iff (!rst_n) ARVALID && ARREADY);
     R_HANDSHAKE_COV  : cover property (@(posedge clk) disable iff (!rst_n) RVALID  && RREADY);
+    //Hoang Ho - legal cross-ID read-data interleaving evidence
+    R_INTERLEAVE_DIFF_ID_COV : cover property (@(posedge clk) disable iff (!rst_n) r_interleave_pulse);
 
     // Back-pressure coverage (VALID && !READY - stall cycle)
     AW_BACKPRESSURE_COV : cover property (@(posedge clk) disable iff (!rst_n) AWVALID && !AWREADY);
@@ -625,5 +965,20 @@ module axi4_sva #(
     // Max-length burst (256 beats)
     MAX_WRITE_COV : cover property (@(posedge clk) disable iff (!rst_n) AWVALID && AWREADY && AWLEN == 255);
     MAX_READ_COV  : cover property (@(posedge clk) disable iff (!rst_n) ARVALID && ARREADY && ARLEN == 255);
+
+
+
+    //Hoang Ho - BEGIN: Additional SVA cover properties for 4KB and dependency hit evidence
+    // 4KB boundary near-edge coverage
+    AW_4KB_NEAR_COV : cover property (@(posedge clk) disable iff (!rst_n)
+        AWVALID && AWREADY && AWADDR[11:0] >= 12'hF00);
+    AR_4KB_NEAR_COV : cover property (@(posedge clk) disable iff (!rst_n)
+        ARVALID && ARREADY && ARADDR[11:0] >= 12'hF00);
+
+    // Dependency coverage
+    B_AFTER_AW_WLAST_COV : cover property (@(posedge clk) disable iff (!rst_n)
+        BVALID && (aw_done_for_b > 0) && (wlast_done_for_b > 0));
+    RVALID_COV : cover property (@(posedge clk) disable iff (!rst_n) RVALID);
+    //Hoang Ho - END: Additional SVA cover properties for 4KB and dependency hit evidence
 
 endmodule : axi4_sva

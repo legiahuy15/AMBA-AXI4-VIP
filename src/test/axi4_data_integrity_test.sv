@@ -40,14 +40,21 @@ class axi4_data_integrity_test extends axi4_base_test;
     endfunction : build_phase
 
     task run_phase(uvm_phase phase);
-        axi4_data_integrity_seq integrity_seq;
+        //Hoang Ho - BEGIN: Questa 10.6b package-qualified sequence type
+        // Explicit package qualification avoids an old name-resolution issue
+        // when this test package imports axi4_pkg with a wildcard.
+        axi4_pkg::axi4_data_integrity_seq integrity_seq;
+        //Hoang Ho - END
+
         phase.raise_objection(this, "axi4_data_integrity_test: starting");
 
         `uvm_info(get_type_name(),
                   "Starting data integrity test (write known data -> read-back -> compare)",
                   UVM_LOW)
 
-        integrity_seq = axi4_data_integrity_seq::type_id::create("integrity_seq");
+        //Hoang Ho - BEGIN: create through the explicitly qualified registry type
+        integrity_seq = axi4_pkg::axi4_data_integrity_seq::type_id::create("integrity_seq");
+        //Hoang Ho - END
         integrity_seq.start(env.master_agent.sqr);
 
         // Drain time

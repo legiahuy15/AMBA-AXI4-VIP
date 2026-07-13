@@ -1,3 +1,8 @@
+//=============================================================================
+// OWNERSHIP NOTE
+//   Original unmarked code in this file : Huy Le / original AXI4-VIP repo
+//   Blocks marked //Hoang Ho            : Hoang Ho functional/spec fixes
+//=============================================================================
 //==============================================================================
 // File        : axi4_master_driver.sv
 // Project     : AXI4 VIP
@@ -26,6 +31,12 @@ class axi4_master_driver extends uvm_driver #(axi4_transaction);
     protected axi4_transaction pending_b_tr[bit[AXI4_ID_WIDTH-1:0]][$];
     protected axi4_transaction pending_r_tr[bit[AXI4_ID_WIDTH-1:0]][$];
 
+    //Hoang Ho - BEGIN: beat-level read response tracking by transaction
+    // Allows legal R-channel interleaving between different RID values while
+    // preserving request order for transactions that use the same ID.
+    protected int unsigned pending_r_beat[axi4_transaction];
+    //Hoang Ho - END: beat-level read response tracking by transaction
+
     // Inter-channel synchronization flags for wr_order constraints
     protected bit aw_done[axi4_transaction];
     protected bit w_started[axi4_transaction];
@@ -33,6 +44,15 @@ class axi4_master_driver extends uvm_driver #(axi4_transaction);
     // Phase handle for simulation objection control
     protected uvm_phase run_phase_handle;
     protected int unsigned active_objections_cnt = 0;
+
+    // Master-side response back-pressure configuration. These fields control
+    // how long the master waits before asserting BREADY/RREADY. They allow
+    // response-channel payload stability checks and back-pressure coverage to
+    // be exercised. When max = 0, the master responds with no extra delay.
+    int unsigned bready_delay_min = 0;
+    int unsigned bready_delay_max = 0;
+    int unsigned rready_delay_min = 0;
+    int unsigned rready_delay_max = 0;
 
     // =========================================================================
     // Constructor
@@ -48,6 +68,11 @@ class axi4_master_driver extends uvm_driver #(axi4_transaction);
         super.build_phase(phase);
         if (!uvm_config_db#(virtual axi4_if)::get(this, "", "vif", vif))
             `uvm_fatal(get_type_name(), "Virtual interface not found in config_db")
+
+        void'(uvm_config_db#(int unsigned)::get(this, "", "bready_delay_min", bready_delay_min));
+        void'(uvm_config_db#(int unsigned)::get(this, "", "bready_delay_max", bready_delay_max));
+        void'(uvm_config_db#(int unsigned)::get(this, "", "rready_delay_min", rready_delay_min));
+        void'(uvm_config_db#(int unsigned)::get(this, "", "rready_delay_max", rready_delay_max));
     endfunction : build_phase
 
     // =========================================================================
@@ -117,6 +142,8 @@ class axi4_master_driver extends uvm_driver #(axi4_transaction);
         ar_drive_queue.delete();
         pending_b_tr.delete();
         pending_r_tr.delete();
+        //Hoang Ho - reset read beat state together with outstanding requests
+        pending_r_beat.delete();
         aw_done.delete();
         w_started.delete();
         clear_objections();
@@ -222,21 +249,25 @@ class axi4_master_driver extends uvm_driver #(axi4_transaction);
     // W Channel - Write Data phase
     // =========================================================================
     task drive_w_channel(axi4_transaction tr);
-        for (int i = 0; i <= tr.len; i++) begin
-            @(vif.master_cb);
-            vif.master_cb.WVALID <= 1'b1;
-            vif.master_cb.WDATA  <= tr.data[i];
-            vif.master_cb.WSTRB  <= tr.strb[i];
-            vif.master_cb.WLAST   <= (i == tr.len) ? 1'b1 : 1'b0;
+        //Hoang Ho - BEGIN: continuous-WREADY-safe write-data driver
+        // Present the first beat once, then update the payload immediately after
+        // each handshake. There is no extra idle clock while WVALID remains high,
+        // so a subordinate that keeps WREADY asserted cannot accept a beat twice.
+        @(vif.master_cb);
+        vif.master_cb.WVALID <= 1'b1;
 
-            // Wait for WREADY handshake
+        for (int i = 0; i <= tr.len; i++) begin
+            vif.master_cb.WDATA <= tr.data[i];
+            vif.master_cb.WSTRB <= tr.strb[i];
+            vif.master_cb.WLAST <= (i == tr.len);
+
             do @(vif.master_cb);
             while (!vif.master_cb.WREADY);
         end
 
-        // All beats sent - deassert
         vif.master_cb.WVALID <= 1'b0;
         vif.master_cb.WLAST  <= 1'b0;
+        //Hoang Ho - END: continuous-WREADY-safe write-data driver
     endtask : drive_w_channel
 
     // =========================================================================
@@ -264,33 +295,92 @@ class axi4_master_driver extends uvm_driver #(axi4_transaction);
         vif.master_cb.ARVALID <= 1'b0;
     endtask : drive_ar_channel
 
+    //Hoang Ho - BEGIN: Master-side B/R response backpressure helper tasks
+    // =========================================================================
+    // Response READY delay helpers
+    // =========================================================================
+    task rand_bready_delay();
+        int unsigned delay;
+        if (bready_delay_max > 0) begin
+            delay = $urandom_range(bready_delay_max, bready_delay_min);
+            vif.master_cb.BREADY <= 1'b0;
+            repeat (delay) @(vif.master_cb);
+        end
+    endtask : rand_bready_delay
+
+    task rand_rready_delay();
+        int unsigned delay;
+        if (rready_delay_max > 0) begin
+            delay = $urandom_range(rready_delay_max, rready_delay_min);
+            vif.master_cb.RREADY <= 1'b0;
+            repeat (delay) @(vif.master_cb);
+        end
+    endtask : rand_rready_delay
+
+    // Wait for one B handshake while optionally applying master-side
+    // BREADY back-pressure.
+    task wait_b_handshake(output bit [AXI4_ID_WIDTH-1:0] bid,
+                          output axi4_resp_e             bresp);
+        rand_bready_delay();
+        vif.master_cb.BREADY <= 1'b1;
+        do @(vif.master_cb);
+        while (!vif.master_cb.BVALID);
+        bid   = vif.master_cb.BID;
+        bresp = axi4_resp_e'(vif.master_cb.BRESP);
+        vif.master_cb.BREADY <= 1'b0;
+    endtask : wait_b_handshake
+
+    // Wait for one R handshake while optionally applying master-side
+    // RREADY back-pressure.
+    task wait_r_handshake(output bit [AXI4_ID_WIDTH-1:0]   rid,
+                          output bit [AXI4_DATA_WIDTH-1:0] rdata,
+                          output axi4_resp_e               rresp,
+                          output bit                       rlast);
+        rand_rready_delay();
+        vif.master_cb.RREADY <= 1'b1;
+        do @(vif.master_cb);
+        while (!vif.master_cb.RVALID);
+        rid   = vif.master_cb.RID;
+        rdata = vif.master_cb.RDATA;
+        rresp = axi4_resp_e'(vif.master_cb.RRESP);
+        rlast = vif.master_cb.RLAST;
+        vif.master_cb.RREADY <= 1'b0;
+    endtask : wait_r_handshake
+    //Hoang Ho - END: Master-side B/R response backpressure helper tasks
+
     // =========================================================================
     // B Channel response receiver (kept active in parallel)
     // =========================================================================
     task receive_b_responses();
-        vif.master_cb.BREADY <= 1'b1;
+        vif.master_cb.BREADY <= 1'b0;
         forever begin
-            @(vif.master_cb);
-            if (vif.master_cb.BVALID) begin
-                bit [AXI4_ID_WIDTH-1:0] bid;
-                bid = vif.master_cb.BID;
-                if (pending_b_tr.exists(bid) && pending_b_tr[bid].size() > 0) begin
-                    axi4_transaction tr;
-                    tr = pending_b_tr[bid].pop_front();
-                    tr.resp = axi4_resp_e'(vif.master_cb.BRESP);
-                    
-                    w_started.delete(tr);
-                    aw_done.delete(tr);
-                    
-                    drop_driver_objection("Write response received");
-                    ->tr.done_event.ev;
-                    `uvm_info(get_type_name(),
-                              $sformatf("Master driver received B response: ID=0x%0h RESP=%s",
-                                        tr.id, tr.resp.name()), UVM_HIGH)
-                end else begin
-                    `uvm_error(get_type_name(),
-                               $sformatf("Master driver received unexpected B response ID=0x%0h", bid))
-                end
+            bit [AXI4_ID_WIDTH-1:0] bid;
+            axi4_resp_e             bresp;
+
+            //Hoang Ho - BEGIN: use backpressure-aware B handshake capture
+            wait_b_handshake(bid, bresp);
+            //Hoang Ho - END: use backpressure-aware B handshake capture
+
+            if (pending_b_tr.exists(bid) && pending_b_tr[bid].size() > 0) begin
+                axi4_transaction tr;
+                tr = pending_b_tr[bid].pop_front();
+                tr.resp = bresp;
+
+                w_started.delete(tr);
+                aw_done.delete(tr);
+
+                drop_driver_objection("Write response received");
+                //Hoang Ho - persistent completion state is safe even if a
+                // sequence starts waiting after the event pulse.
+                tr.completed       = 1'b1;
+                tr.completion_time = $time;
+                ->tr.done_event.ev;
+                `uvm_info(get_type_name(),
+                          $sformatf("Master driver received B response: ID=0x%0h RESP=%s",
+                                    tr.id, tr.resp.name()), UVM_HIGH)
+            end else begin
+                `uvm_error(get_type_name(),
+                           $sformatf("Master driver received unexpected B response ID=0x%0h", bid))
             end
         end
     endtask : receive_b_responses
@@ -299,62 +389,65 @@ class axi4_master_driver extends uvm_driver #(axi4_transaction);
     // R Channel response receiver (kept active in parallel)
     // =========================================================================
     task receive_r_responses();
-        vif.master_cb.RREADY <= 1'b1;
+        vif.master_cb.RREADY <= 1'b0;
         forever begin
-            bit [AXI4_ID_WIDTH-1:0] rid;
-            axi4_transaction tr;
+            bit [AXI4_ID_WIDTH-1:0]   rid;
+            bit [AXI4_DATA_WIDTH-1:0] rdata;
+            axi4_resp_e               rresp;
+            bit                       rlast;
+            axi4_transaction          tr;
+            int unsigned              beat_idx;
 
-            do @(vif.master_cb);
-            while (!vif.master_cb.RVALID);
+            wait_r_handshake(rid, rdata, rresp, rlast);
 
-            rid = vif.master_cb.RID;
-
+            //Hoang Ho - BEGIN: RID-based beat dispatcher with legal interleaving
             if (pending_r_tr.exists(rid) && pending_r_tr[rid].size() > 0) begin
-                tr = pending_r_tr[rid].pop_front();
-                tr.data[0]  = vif.master_cb.RDATA;
-                tr.rresp[0] = axi4_resp_e'(vif.master_cb.RRESP);
+                // Same-ID transactions remain ordered because only the front
+                // transaction for this RID can consume beats. Different RIDs can
+                // alternate freely from one handshake to the next.
+                tr = pending_r_tr[rid][0];
+                if (!pending_r_beat.exists(tr))
+                    pending_r_beat[tr] = 0;
+                beat_idx = pending_r_beat[tr];
 
-                if (tr.len == 0) begin
-                    if (!vif.master_cb.RLAST)
-                        `uvm_error(get_type_name(),
-                                   $sformatf("RLAST not asserted on single-beat read (ID=0x%0h)", rid))
+                if (beat_idx > tr.len) begin
+                    `uvm_error(get_type_name(),
+                               $sformatf("Extra R beat for ID=0x%0h after expected LEN=%0d", rid, tr.len))
                 end else begin
-                    for (int i = 1; i <= tr.len; i++) begin
-                        do @(vif.master_cb);
-                        while (!vif.master_cb.RVALID);
+                    tr.data[beat_idx]  = rdata;
+                    tr.rresp[beat_idx] = rresp;
 
-                        // AXI4: no read data interleaving - verify RID is
-                        // consistent across all beats within a burst.
-                        if (vif.master_cb.RID !== rid)
-                            `uvm_error(get_type_name(),
-                                       $sformatf("RID changed mid-burst: expected 0x%0h, got 0x%0h on beat %0d (ADDR=0x%08h)",
-                                                 rid, vif.master_cb.RID, i, tr.addr))
+                    if ((beat_idx == tr.len) && !rlast)
+                        `uvm_error(get_type_name(),
+                                   $sformatf("RLAST missing on final beat %0d for RID=0x%0h", beat_idx, rid))
+                    if ((beat_idx != tr.len) && rlast)
+                        `uvm_error(get_type_name(),
+                                   $sformatf("RLAST asserted early on beat %0d of %0d for RID=0x%0h", beat_idx, tr.len, rid))
 
-                        tr.data[i]  = vif.master_cb.RDATA;
-                        tr.rresp[i] = axi4_resp_e'(vif.master_cb.RRESP);
-
-                        if (i == tr.len && !vif.master_cb.RLAST)
-                            `uvm_error(get_type_name(),
-                                       $sformatf("RLAST not asserted on final beat %0d (ID=0x%0h)", i, rid))
-                        if (i != tr.len && vif.master_cb.RLAST)
-                            `uvm_error(get_type_name(),
-                                       $sformatf("Unexpected RLAST on beat %0d of %0d (ID=0x%0h)", i, tr.len, rid))
+                    if (rlast || (beat_idx == tr.len)) begin
+                        void'(pending_r_tr[rid].pop_front());
+                        if (pending_r_tr[rid].size() == 0)
+                            pending_r_tr.delete(rid);
+                        pending_r_beat.delete(tr);
+                        drop_driver_objection("Read completed");
+                        //Hoang Ho - persistent completion state for read burst.
+                        tr.completed       = 1'b1;
+                        tr.completion_time = $time;
+                        ->tr.done_event.ev;
+                        `uvm_info(get_type_name(),
+                                  $sformatf("Master driver completed R burst: ID=0x%0h beats=%0d",
+                                            tr.id, tr.len + 1), UVM_HIGH)
+                    end else begin
+                        pending_r_beat[tr] = beat_idx + 1;
                     end
                 end
-                
-                drop_driver_objection("Read completed");
-                ->tr.done_event.ev;
-                `uvm_info(get_type_name(),
-                          $sformatf("Master driver received all R beats for ID=0x%0h", tr.id), UVM_HIGH)
             end else begin
                 `uvm_error(get_type_name(),
-                           $sformatf("Master driver received unexpected R response ID=0x%0h", rid))
-                while (!vif.master_cb.RLAST) begin
-                    do @(vif.master_cb);
-                    while (!vif.master_cb.RVALID);
-                end
+                           $sformatf("Master driver received unexpected R response RID=0x%0h", rid))
             end
+            //Hoang Ho - END: RID-based beat dispatcher with legal interleaving
         end
     endtask : receive_r_responses
+
 
 endclass : axi4_master_driver

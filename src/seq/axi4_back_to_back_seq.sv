@@ -53,7 +53,6 @@ class axi4_back_to_back_seq extends axi4_base_sequence;
                     len   == 1;                  // 2 beats (short burst)
                     size  == AXI4_SIZE_4B;
                     burst == AXI4_BURST_INCR;
-                    lock  == AXI4_LOCK_NORMAL;   // demo: normal access so the write commits
                     id    == i[3:0];
                     foreach (strb[j]) strb[j] == 4'b1111;
                 }) `uvm_fatal(get_type_name(),
@@ -67,7 +66,7 @@ class axi4_back_to_back_seq extends axi4_base_sequence;
                       UVM_MEDIUM)
 
             // Wait for the last write to complete before starting reads
-            wait(wr_trs[3].done_event.ev.triggered);
+            wait (wr_trs[3].completed); //Hoang Ho - persistent completion wait
         end
 
         // =================================================================
@@ -83,7 +82,6 @@ class axi4_back_to_back_seq extends axi4_base_sequence;
                 len   == 1;                  // 2 beats (matching writes)
                 size  == AXI4_SIZE_4B;
                 burst == AXI4_BURST_INCR;
-                lock  == AXI4_LOCK_NORMAL;   // demo: normal read-back (no EXOKAY)
                 id    == i[3:0];
             }) `uvm_fatal(get_type_name(),
                           $sformatf("Randomization failed for B2B read #%0d", i))

@@ -40,13 +40,13 @@ class axi4_outstanding_test extends axi4_base_test;
         void'($value$plusargs("OUTSTANDING_DEPTH=%d", depth));
         void'($value$plusargs("R_REORDER_EN=%d", r_reorder));
 
-        // Push config BEFORE super.build_phase creates env -> slave_agent -> drv
-        uvm_config_db#(bit)::set(this, "env.slave_agent.drv",
-                                 "r_reorder_enable", r_reorder);
-        uvm_config_db#(int unsigned)::set(this, "env.slave_agent.drv",
-                                          "r_outstanding_max", depth);
-
         super.build_phase(phase);
+
+        //Hoang Ho - BEGIN: configure through env_cfg so the slave agent does
+        // not overwrite the test's settings while propagating its config.
+        env_cfg.slave_agent_cfg.r_reorder_enable  = r_reorder;
+        env_cfg.slave_agent_cfg.r_outstanding_max = (depth == 0) ? 1 : depth;
+        //Hoang Ho - END: configure through env_cfg
     endfunction : build_phase
 
     // =========================================================================

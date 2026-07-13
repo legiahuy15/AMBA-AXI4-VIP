@@ -70,7 +70,7 @@ class axi4_data_integrity_seq extends axi4_base_sequence;
             foreach (strb[i]) strb[i] == 4'b1111;
         }) `uvm_fatal(get_type_name(), "Randomization failed for integrity write #1")
         finish_item(wr_tr);
-        wait(wr_tr.done_event.ev.triggered);
+        wait (wr_tr.completed); //Hoang Ho - persistent completion wait
 
         `uvm_info(get_type_name(),
                   $sformatf("WRITE #1 done: ADDR=0x%08h DATA={0x%08h, 0x%08h, 0x%08h, 0x%08h} RESP=%s",
@@ -91,7 +91,7 @@ class axi4_data_integrity_seq extends axi4_base_sequence;
             lock  == AXI4_LOCK_NORMAL;        // Normal read-back
         }) `uvm_fatal(get_type_name(), "Randomization failed for integrity read #1")
         finish_item(rd_tr);
-        wait(rd_tr.done_event.ev.triggered);
+        wait (rd_tr.completed); //Hoang Ho - persistent completion wait
 
         `uvm_info(get_type_name(),
                   $sformatf("READ  #1 done: ADDR=0x%08h DATA={0x%08h, 0x%08h, 0x%08h, 0x%08h}",
@@ -138,7 +138,7 @@ class axi4_data_integrity_seq extends axi4_base_sequence;
             foreach (strb[i]) strb[i] == 4'b1111;
         }) `uvm_fatal(get_type_name(), "Randomization failed for integrity write #2")
         finish_item(wr_tr);
-        wait(wr_tr.done_event.ev.triggered);
+        wait (wr_tr.completed); //Hoang Ho - persistent completion wait
 
         `uvm_info(get_type_name(),
                   $sformatf("WRITE #2 done: ADDR=0x%08h DATA=0x%08h RESP=%s",
@@ -158,7 +158,7 @@ class axi4_data_integrity_seq extends axi4_base_sequence;
             lock  == AXI4_LOCK_NORMAL;        // Normal read-back
         }) `uvm_fatal(get_type_name(), "Randomization failed for integrity read #2")
         finish_item(rd_tr);
-        wait(rd_tr.done_event.ev.triggered);
+        wait (rd_tr.completed); //Hoang Ho - persistent completion wait
 
         `uvm_info(get_type_name(),
                   $sformatf("READ  #2 done: ADDR=0x%08h DATA=0x%08h",

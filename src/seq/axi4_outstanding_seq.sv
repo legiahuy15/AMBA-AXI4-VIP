@@ -68,7 +68,6 @@ class axi4_outstanding_seq extends axi4_base_sequence;
                             if (!wr_tr.randomize() with {
                                 dir   == AXI4_WRITE;
                                 addr  inside {[addr_lo : addr_hi]};
-                                lock  == AXI4_LOCK_NORMAL;
                                 id    inside {[id_lo   : id_hi]};
                             }) `uvm_fatal(get_type_name(), $sformatf("Randomization failed for write transaction #%0d", idx))
 
@@ -81,7 +80,7 @@ class axi4_outstanding_seq extends axi4_base_sequence;
 
                             // Wait for actual B response on the bus before
                             // releasing the semaphore slot.
-                            wait(wr_tr.done_event.ev.triggered);
+                            wait (wr_tr.completed); //Hoang Ho - persistent completion wait
 
                             `uvm_info(get_type_name(),
                                       $sformatf("Outstanding Write [#%0d] complete: ID=0x%0h", idx, wr_tr.id),
@@ -108,7 +107,6 @@ class axi4_outstanding_seq extends axi4_base_sequence;
                             if (!rd_tr.randomize() with {
                                 dir   == AXI4_READ;
                                 addr  inside {[addr_lo : addr_hi]};
-                                lock  == AXI4_LOCK_NORMAL;
                                 id    inside {[id_lo   : id_hi]};
                             }) `uvm_fatal(get_type_name(), $sformatf("Randomization failed for read transaction #%0d", idx))
 
@@ -121,7 +119,7 @@ class axi4_outstanding_seq extends axi4_base_sequence;
 
                             // Wait for actual R response (all beats) on the bus
                             // before releasing the semaphore slot.
-                            wait(rd_tr.done_event.ev.triggered);
+                            wait (rd_tr.completed); //Hoang Ho - persistent completion wait
 
                             `uvm_info(get_type_name(),
                                       $sformatf("Outstanding Read [#%0d] complete: ID=0x%0h", idx, rd_tr.id),

@@ -48,12 +48,11 @@ class axi4_wr_order_demo_seq extends axi4_base_sequence;
             len      == 3;              // 4-beat burst
             size     == AXI4_SIZE_4B;
             burst    == AXI4_BURST_INCR;
-            lock     == AXI4_LOCK_NORMAL;
             id       == 4'h1;
             foreach (strb[i]) strb[i] == 4'b1111;
         }) `uvm_fatal(get_type_name(), "Randomization failed for PARALLEL write")
         finish_item(tr);
-        wait(tr.done_event.ev.triggered);
+        wait (tr.completed); //Hoang Ho - persistent completion wait
 
         `uvm_info(get_type_name(),
                   $sformatf("TX1 [PARALLEL] done: ADDR=0x%08h LEN=%0d RESP=%s",
@@ -75,12 +74,11 @@ class axi4_wr_order_demo_seq extends axi4_base_sequence;
             len      == 3;              // 4-beat burst
             size     == AXI4_SIZE_4B;
             burst    == AXI4_BURST_INCR;
-            lock     == AXI4_LOCK_NORMAL;
             id       == 4'h2;
             foreach (strb[i]) strb[i] == 4'b1111;
         }) `uvm_fatal(get_type_name(), "Randomization failed for AW_BEFORE_W write")
         finish_item(tr);
-        wait(tr.done_event.ev.triggered);
+        wait (tr.completed); //Hoang Ho - persistent completion wait
 
         `uvm_info(get_type_name(),
                   $sformatf("TX2 [AW_BEFORE_W] done: ADDR=0x%08h LEN=%0d RESP=%s",
@@ -101,12 +99,11 @@ class axi4_wr_order_demo_seq extends axi4_base_sequence;
             len      == 3;              // 4-beat burst
             size     == AXI4_SIZE_4B;
             burst    == AXI4_BURST_INCR;
-            lock     == AXI4_LOCK_NORMAL;
             id       == 4'h3;
             foreach (strb[i]) strb[i] == 4'b1111;
         }) `uvm_fatal(get_type_name(), "Randomization failed for W_BEFORE_AW write")
         finish_item(tr);
-        wait(tr.done_event.ev.triggered);
+        wait (tr.completed); //Hoang Ho - persistent completion wait
 
         `uvm_info(get_type_name(),
                   $sformatf("TX3 [W_BEFORE_AW] done: ADDR=0x%08h LEN=%0d RESP=%s",

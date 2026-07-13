@@ -1,4 +1,9 @@
 //=============================================================================
+// OWNERSHIP NOTE
+//   Original unmarked code in this file : Huy Le / original AXI4-VIP repo
+//   Blocks marked //Hoang Ho            : Hoang Ho functional/spec fixes
+//=============================================================================
+//=============================================================================
 // File        : axi4_transaction.sv
 // Project     : AXI4 VIP
 // Author      : Huy Le
@@ -43,6 +48,10 @@ class axi4_transaction extends uvm_sequence_item;
     // Bus completion event - triggered by driver when B/R response is received.
     // Sequences can wait on this to implement true outstanding depth control.
     axi4_event_wrapper                      done_event;
+    //Hoang Ho - BEGIN: persistent completion state avoids a lost event race
+    bit                                     completed = 0;
+    time                                    completion_time = 0;
+    //Hoang Ho - END: persistent completion state avoids a lost event race
 
     //-------------------------------------------------------------------------
     // UVM utility macro
@@ -71,6 +80,29 @@ class axi4_transaction extends uvm_sequence_item;
     // Constraints
     //-------------------------------------------------------------------------
 
+
+    //Hoang Ho - BEGIN: compatibility wrappers around shared protocol helpers
+    function bit [AXI4_ADDR_WIDTH-1:0] calc_beat_addr(
+        bit [AXI4_ADDR_WIDTH-1:0] start_addr,
+        int unsigned              beat_idx,
+        bit [2:0]                 size_i,
+        axi4_burst_type_e         burst_i,
+        bit [7:0]                 len_i
+    );
+        return axi4_calc_beat_addr(start_addr, beat_idx, size_i, burst_i, len_i);
+    endfunction : calc_beat_addr
+
+    function bit [AXI4_STRB_WIDTH-1:0] calc_legal_wstrb_mask(
+        bit [AXI4_ADDR_WIDTH-1:0] start_addr,
+        int unsigned              beat_idx,
+        bit [2:0]                 size_i,
+        axi4_burst_type_e         burst_i,
+        bit [7:0]                 len_i
+    );
+        return axi4_calc_legal_lane_mask(start_addr, beat_idx, size_i, burst_i, len_i);
+    endfunction : calc_legal_wstrb_mask
+    //Hoang Ho - END: compatibility wrappers around shared protocol helpers
+
     // Data / strobe array size must match burst length
     constraint c_data_size {
         data.size() == len + 1;
@@ -90,6 +122,46 @@ class axi4_transaction extends uvm_sequence_item;
     constraint c_size_max {
         (1 << size) <= (AXI4_DATA_WIDTH / 8);
     }
+
+    //Hoang Ho - BEGIN: solver-native AXI4 4KB and WSTRB legality constraints
+    // Do not call axi4_burst_crosses_4kb() from a random constraint. Questa
+    // 10.6b treats a user function as a black box: addr/size/burst/len can be
+    // chosen before the function result is known, so a legal solution can be
+    // reported as randomization failure instead of being backtracked.
+    //
+    // FIXED container upper edge:
+    //   Align(AxADDR, bytes_per_beat) + bytes_per_beat
+    // INCR container upper edge:
+    //   Align(AxADDR, bytes_per_beat) + beats*bytes_per_beat
+    // A legal WRAP container is a power-of-two size of at most 2048 bytes for
+    // AXI4 (16 beats x 128 bytes), therefore it is naturally contained in one
+    // 4KB page once the WRAP length/alignment constraints are satisfied.
+    constraint c_4kb_boundary {
+        if (burst == AXI4_BURST_FIXED) {
+            (((addr[11:0] >> size) << size) + (1 << size)) <= 4096;
+        }
+        else if (burst == AXI4_BURST_INCR) {
+            (((addr[11:0] >> size) << size) + ((len + 1) << size)) <= 4096;
+        }
+    }
+
+    // A write can select any subset of the legal byte lanes, including zero
+    // strobes, but it must never select a lane outside the transfer container.
+    constraint c_write_strb_legal {
+        if (dir == AXI4_WRITE) {
+            foreach (strb[i])
+                (strb[i] & ~axi4_calc_legal_lane_mask(addr, i, size, burst, len)) == '0;
+        }
+    }
+
+    // Ordinary traffic is normal by default. Dedicated exclusive sequences
+    // override this soft constraint explicitly. Besides matching the intended
+    // learning-VIP profile, this keeps unrelated sweeps from carrying extra
+    // exclusive alignment/length restrictions.
+    constraint c_lock_default {
+        soft lock == AXI4_LOCK_NORMAL;
+    }
+    //Hoang Ho - END: solver-native AXI4 4KB and WSTRB legality constraints
 
     // WRAP burst: len must be 2, 4, 8, or 16 beats (len = 1, 3, 7, 15)
     constraint c_wrap_len {

@@ -36,16 +36,25 @@ class axi4_reset_mid_burst_test extends axi4_base_test;
     endfunction : build_phase
 
     task run_phase(uvm_phase phase);
-        uvm_event               reset_ev = uvm_event_pool::get_global("axi4_reset_req");
-        axi4_reset_traffic_seq  traffic_seq;
-        axi4_data_integrity_seq recover_seq;
-        virtual axi4_if         vif = env_cfg.master_vif;
+        //Hoang Ho - BEGIN: Questa 10.6b-compatible declarations
+        // Keep every declaration before executable assignments and qualify
+        // sequence classes from axi4_pkg explicitly.
+        uvm_event                              reset_ev;
+        axi4_pkg::axi4_reset_traffic_seq       traffic_seq;
+        axi4_pkg::axi4_data_integrity_seq      recover_seq;
+        virtual axi4_if                        vif;
+
+        reset_ev = uvm_event_pool::get_global("axi4_reset_req");
+        vif      = env_cfg.master_vif;
+        //Hoang Ho - END
 
         phase.raise_objection(this, "reset_mid_burst: starting");
         `uvm_info(get_type_name(), "Starting mid-burst reset recovery test", UVM_LOW)
 
         // ---- Phase 1: launch background traffic so bursts are in flight ----
-        traffic_seq = axi4_reset_traffic_seq::type_id::create("traffic_seq");
+        //Hoang Ho - BEGIN: package-qualified factory create
+        traffic_seq = axi4_pkg::axi4_reset_traffic_seq::type_id::create("traffic_seq");
+        //Hoang Ho - END
         fork : traffic_blk
             traffic_seq.start(env.master_agent.sqr);
         join_none
@@ -70,7 +79,9 @@ class axi4_reset_mid_burst_test extends axi4_base_test;
         // ---- Phase 3: recovery proof - self-checking write->read-back ----
         // If the driver failed to recover, this hangs (watchdog fires -> fail).
         // If read-back data is wrong, the sequence raises UVM_ERROR.
-        recover_seq = axi4_data_integrity_seq::type_id::create("recover_seq");
+        //Hoang Ho - BEGIN: package-qualified factory create
+        recover_seq = axi4_pkg::axi4_data_integrity_seq::type_id::create("recover_seq");
+        //Hoang Ho - END
         recover_seq.start(env.master_agent.sqr);
 
         repeat (50) @(posedge vif.clk);

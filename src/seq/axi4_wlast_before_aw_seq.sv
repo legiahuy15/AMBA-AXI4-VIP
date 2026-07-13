@@ -46,7 +46,7 @@ class axi4_wlast_before_aw_seq extends axi4_base_sequence;
                 foreach (strb[j]) strb[j] == 4'b1111;
             }) `uvm_fatal(get_type_name(), "Randomization failed for W_BEFORE_AW write")
             finish_item(tr);
-            wait(tr.done_event.ev.triggered);
+            wait (tr.completed); //Hoang Ho - persistent completion wait
 
             `uvm_info(get_type_name(),
                       $sformatf("W_BEFORE_AW done: ADDR=0x%08h LEN=%0d (%0d beats) RESP=%s",

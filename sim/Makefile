@@ -1,7 +1,9 @@
+# Hoang Ho: unmarked baseline recipes remain from Huy Le's original project.
+# Hoang Ho: lines explicitly marked below add functional/spec regression safety.
 # ==============================================================================
 # File        : Makefile
 # Project     : AXI4 VIP
-# Author      : Huy Le and HHo
+# Author      : Huy Le
 # Description : QuestaSim simulation Makefile for Linux.
 #               Supports parallel regressions, random seeding, code/functional 
 #               coverage collection, and merging results into HTML reports.
@@ -15,6 +17,8 @@ REPORT_DIR   = ./report
 LOG_DIR      = $(REPORT_DIR)/logs
 COV_DIR      = $(REPORT_DIR)/coverage
 COV_HTML_DIR = $(REPORT_DIR)/cov_html
+# Hoang Ho - per-run pass/fail markers for complete regression accounting
+STATUS_DIR    = $(REPORT_DIR)/status
 
 # Compilation Source Files (in correct compile order)
 SV_SOURCES = \
@@ -52,6 +56,8 @@ TEST_LIST     ?= axi4_sanity_test axi4_random_test axi4_outstanding_test \
                  axi4_back_to_back_test \
                  axi4_data_integrity_test \
                  axi4_addr_integrity_test axi4_backpressure_test \
+                 axi4_4kb_boundary_test axi4_response_backpressure_test \
+                 axi4_spec_corner_test axi4_helper_unit_test \
                  axi4_exclusive_demo_test axi4_ooo_demo_test
 
 # ==============================================================================
@@ -79,7 +85,7 @@ endif
 # ==============================================================================
 # 4. Main Targets
 # ==============================================================================
-.PHONY: help compile optimize run regress merge_cov cov_report gui clean sva_unit
+.PHONY: help compile optimize run regress merge_cov cov_report gui clean sva_unit spec_smoke
 
 help:
 	@echo "========================================================================"
@@ -91,6 +97,7 @@ help:
 	@echo "  make regress         - Run multiple simulation runs in parallel"
 	@echo "  make merge_cov       - Merge all coverage databases (.ucdb)"
 	@echo "  make cov_report      - Merge and generate HTML coverage report"
+	@echo "  make spec_smoke      - Run Hoang Ho directed AXI4 functional fixes"
 	@echo "  make clean           - Remove all generated files & simulation libraries"
 	@echo ""
 	@echo "Variables (Override via command line, e.g., 'make run TESTNAME=my_test'):"
@@ -106,7 +113,8 @@ help:
 compile:
 	@mkdir -p $(LOG_DIR)
 	@echo "[COMPILE] Creating library and compiling sources..."
-	@vlib work
+	@# Hoang Ho - avoid harmless vlib-34 warning when work already exists.
+	@if [ ! -d work ]; then vlib work; fi
 	@vmap work work
 	vlog $(VLOG_FLAGS) $(SV_SOURCES)
 
@@ -119,12 +127,31 @@ optimize: compile
 run: optimize
 	@mkdir -p $(LOG_DIR) $(COV_DIR)
 	@echo "[RUN] Executing: $(TESTNAME) | SEED=$(GEN_SEED)"
-	vsim $(VSIM_FLAGS) -sv_seed $(GEN_SEED) \
+	@rm -f $(LOG_DIR)/run.log
+	@vsim $(VSIM_FLAGS) -sv_seed $(GEN_SEED) \
 		+UVM_TESTNAME=$(TESTNAME) \
 		+UVM_VERBOSITY=$(UVM_VERBOSITY) \
 		$(PLUSARGS) \
 		-do "coverage save -onexit $(COV_DIR)/$(TESTNAME)_seed_$(GEN_SEED).ucdb; run -all; quit -f" \
-		opt_tb_top
+		opt_tb_top; \
+	status=$$?; \
+	if [ $$status -ne 0 ] || \
+	   grep -q -E "UVM_ERROR[[:space:]]*:[[:space:]]*[1-9]" $(LOG_DIR)/run.log || \
+	   grep -q -E "UVM_FATAL[[:space:]]*:[[:space:]]*[1-9]" $(LOG_DIR)/run.log || \
+	   grep -q "=== TEST FAILED ===" $(LOG_DIR)/run.log; then \
+		echo "[RUN] FAILED: $(TESTNAME), seed=$(GEN_SEED)"; \
+		exit 1; \
+	fi; \
+	echo "[RUN] PASSED: $(TESTNAME), seed=$(GEN_SEED)"
+
+# Hoang Ho - compact directed gate for the functional fixes in this patch.
+spec_smoke: optimize
+	@$(MAKE) run TESTNAME=axi4_helper_unit_test SEED=1
+	@$(MAKE) run TESTNAME=axi4_spec_corner_test SEED=1
+	@$(MAKE) run TESTNAME=axi4_4kb_boundary_test SEED=1
+	@$(MAKE) run TESTNAME=axi4_response_backpressure_test SEED=22883092
+	@$(MAKE) run TESTNAME=axi4_response_backpressure_test SEED=68865829
+	@echo "[SPEC-SMOKE] All directed functional-fix tests passed."
 
 # Launch Questa GUI with full AXI4 waveform view
 gui: optimize
@@ -134,7 +161,28 @@ gui: optimize
 		+UVM_TESTNAME=$(TESTNAME) \
 		+UVM_VERBOSITY=$(UVM_VERBOSITY) \
 		$(PLUSARGS) \
-		-do "do wave.do; run -all" \
+		-do "\
+			add wave -divider {System}; \
+			add wave -color Yellow sim:/tb_top/intf/clk; \
+			add wave -color Yellow sim:/tb_top/intf/rst_n; \
+			add wave -divider {AW Channel}; \
+			add wave -hex sim:/tb_top/intf/AWID sim:/tb_top/intf/AWADDR sim:/tb_top/intf/AWLEN; \
+			add wave -hex sim:/tb_top/intf/AWSIZE sim:/tb_top/intf/AWBURST; \
+			add wave sim:/tb_top/intf/AWVALID sim:/tb_top/intf/AWREADY; \
+			add wave -divider {W Channel}; \
+			add wave -hex sim:/tb_top/intf/WDATA sim:/tb_top/intf/WSTRB; \
+			add wave sim:/tb_top/intf/WLAST sim:/tb_top/intf/WVALID sim:/tb_top/intf/WREADY; \
+			add wave -divider {B Channel}; \
+			add wave -hex sim:/tb_top/intf/BID sim:/tb_top/intf/BRESP; \
+			add wave sim:/tb_top/intf/BVALID sim:/tb_top/intf/BREADY; \
+			add wave -divider {AR Channel}; \
+			add wave -hex sim:/tb_top/intf/ARID sim:/tb_top/intf/ARADDR sim:/tb_top/intf/ARLEN; \
+			add wave -hex sim:/tb_top/intf/ARSIZE sim:/tb_top/intf/ARBURST; \
+			add wave sim:/tb_top/intf/ARVALID sim:/tb_top/intf/ARREADY; \
+			add wave -divider {R Channel}; \
+			add wave -hex sim:/tb_top/intf/RID sim:/tb_top/intf/RDATA sim:/tb_top/intf/RRESP; \
+			add wave sim:/tb_top/intf/RLAST sim:/tb_top/intf/RVALID sim:/tb_top/intf/RREADY; \
+			run -all" \
 		opt_tb_top &
 
 # ==============================================================================
@@ -143,7 +191,8 @@ gui: optimize
 sva_unit:
 	@mkdir -p $(LOG_DIR)
 	@echo "[SVA-UNIT] Compiling axi4_sva + directed unit testbench..."
-	@vlib work
+	@# Hoang Ho - avoid vlib-34 warning.
+	@if [ ! -d work ]; then vlib work; fi
 	@vmap work work
 	vlog -sv -work work -timescale 1ns/1ps +incdir+$(SRC_DIR) \
 		$(SRC_DIR)/sva/axi4_sva.sv $(SRC_DIR)/sva/tb_sva_wlast_before_aw.sv \
@@ -163,9 +212,18 @@ REGRESS_TARGETS = $(foreach test,$(TEST_LIST),$(foreach idx,$(shell seq 1 $(NUM_
 regress: optimize
 	@echo "[REGRESS] Starting parallel regression for tests: $(TEST_LIST)"
 	@echo "          Running $(NUM_RUNS) iterations per test..."
-	@mkdir -p $(LOG_DIR) $(COV_DIR)
+	@mkdir -p $(LOG_DIR) $(COV_DIR) $(STATUS_DIR)
+	@rm -f $(STATUS_DIR)/*.pass $(STATUS_DIR)/*.fail
 	@$(MAKE) $(REGRESS_TARGETS)
-	@echo "[REGRESS] Parallel regression complete! Run 'make cov_report' to generate coverage."
+	@fail_count=$$(find $(STATUS_DIR) -maxdepth 1 -name '*.fail' | wc -l); \
+	pass_count=$$(find $(STATUS_DIR) -maxdepth 1 -name '*.pass' | wc -l); \
+	echo "[REGRESS] Results: PASS=$$pass_count FAIL=$$fail_count"; \
+	if [ $$fail_count -ne 0 ]; then \
+		echo "[REGRESS] FAILED runs:"; \
+		for f in $(STATUS_DIR)/*.fail; do [ -e "$$f" ] && cat "$$f"; done; \
+		exit 1; \
+	fi
+	@echo "[REGRESS] Regression passed. Run 'make cov_report' to generate coverage."
 
 # Individual run target handler
 $(REGRESS_TARGETS):
@@ -174,6 +232,7 @@ $(REGRESS_TARGETS):
 	seed=$$(shuf -i 1-99999999 -n 1); \
 	log_file=$(LOG_DIR)/$${test_name}_run_$${run_idx}_seed_$${seed}.log; \
 	ucdb_file=$(COV_DIR)/$${test_name}_run_$${run_idx}_seed_$${seed}.ucdb; \
+	status_base=$(STATUS_DIR)/$${test_name}_run_$${run_idx}_seed_$${seed}; \
 	echo "[REGRESS-RUN] $$test_name | Iteration: $$run_idx | Seed: $$seed"; \
 	vsim $(VSIM_BASE_FLAGS) -sv_seed $$seed \
 		+UVM_TESTNAME=$$test_name \
@@ -182,9 +241,15 @@ $(REGRESS_TARGETS):
 		-l $$log_file \
 		-do "coverage save -onexit $$ucdb_file; run -all; quit -f" \
 		opt_tb_top; \
-	if grep -q -E "UVM_ERROR\s*:\s*[1-9]" $$log_file || grep -q -E "UVM_FATAL\s*:\s*[1-9]" $$log_file; then \
+	status=$$?; \
+	if [ $$status -ne 0 ] || \
+	   grep -q -E "UVM_ERROR[[:space:]]*:[[:space:]]*[1-9]" $$log_file || \
+	   grep -q -E "UVM_FATAL[[:space:]]*:[[:space:]]*[1-9]" $$log_file || \
+	   grep -q "=== TEST FAILED ===" $$log_file; then \
+		echo "$$test_name run=$$run_idx seed=$$seed log=$$log_file" > $${status_base}.fail; \
 		echo "              ==> $$test_name (Run $$run_idx) [FAILED] - Log: $$log_file"; \
 	else \
+		echo "$$test_name run=$$run_idx seed=$$seed log=$$log_file" > $${status_base}.pass; \
 		echo "              ==> $$test_name (Run $$run_idx) [PASSED]"; \
 	fi
 
@@ -193,19 +258,22 @@ $(REGRESS_TARGETS):
 # ==============================================================================
 # Merge all generated UCDB databases
 merge_cov:
-	@echo "[COV] Merging all coverage databases in $(COV_DIR) into $(COV_DIR)/merged.ucdb..."
+	@echo "[COV] Merging coverage databases into $(COV_DIR)/merged.ucdb..."
 	@mkdir -p $(COV_DIR)
-	@if [ "$$(ls -A $(COV_DIR)/*.ucdb 2>/dev/null)" ]; then \
-		vcover merge $(COV_DIR)/merged.ucdb $(COV_DIR)/*.ucdb; \
+	@rm -f $(COV_DIR)/merged.ucdb
+	@ucdb_files=$$(find $(COV_DIR) -maxdepth 1 -type f -name '*.ucdb' ! -name 'merged.ucdb' -print); \
+	if [ -n "$$ucdb_files" ]; then \
+		vcover merge $(COV_DIR)/merged.ucdb $$ucdb_files; \
 		echo "[COV] Coverage databases successfully merged."; \
 	else \
-		echo "[COV] ERROR: No .ucdb files found in $(COV_DIR) to merge!"; \
+		echo "[COV] ERROR: No .ucdb files found in $(COV_DIR)."; \
 		exit 1; \
 	fi
 
 # Generate the HTML Report
 cov_report: merge_cov
 	@echo "[COV] Generating HTML coverage report in $(COV_HTML_DIR)..."
+	@rm -rf $(COV_HTML_DIR)
 	@mkdir -p $(COV_HTML_DIR)
 	vcover report -html -htmldir $(COV_HTML_DIR) -verbose $(COV_DIR)/merged.ucdb
 	@echo "========================================================================"
