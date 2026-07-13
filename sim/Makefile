@@ -1,7 +1,7 @@
 # ==============================================================================
 # File        : Makefile
 # Project     : AXI4 VIP
-# Author      : Huy Le and HH
+# Author      : Huy Le and HHo
 # Description : QuestaSim simulation Makefile for Linux.
 #               Supports parallel regressions, random seeding, code/functional 
 #               coverage collection, and merging results into HTML reports.
