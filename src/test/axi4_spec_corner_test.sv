@@ -1,4 +1,4 @@
-//Hoang Ho - New file: functional AXI4 corner regression test
+//Hoang Ho: New file: functional AXI4 corner regression test
 //==============================================================================
 // File        : axi4_spec_corner_test.sv
 // Project     : AXI4 VIP
@@ -21,7 +21,7 @@ class axi4_spec_corner_test extends axi4_base_test;
 
     function void build_phase(uvm_phase phase);
         super.build_phase(phase);
-        //Hoang Ho - These knobs default to zero in all original Huy Le tests.
+        //Hoang Ho: These knobs default to zero in all original Huy Le tests.
         env_cfg.slave_agent_cfg.wready_always_high = 1'b1;
         env_cfg.slave_agent_cfg.r_reorder_enable   = 1'b1;
         env_cfg.slave_agent_cfg.r_outstanding_max  = 4;
@@ -46,7 +46,7 @@ class axi4_spec_corner_test extends axi4_base_test;
         join_any
         disable fork;
 
-        //Hoang Ho - drain monitor/scoreboard analysis FIFOs deterministically.
+        //Hoang Ho: drain monitor/scoreboard analysis FIFOs deterministically.
         repeat (20) @(posedge env_cfg.master_vif.clk);
         phase.drop_objection(this, "axi4_spec_corner_test complete");
     endtask : run_phase

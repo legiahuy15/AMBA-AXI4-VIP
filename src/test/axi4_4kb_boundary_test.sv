@@ -1,4 +1,4 @@
-//Hoang Ho - New file: 4KB boundary directed test
+//Hoang Ho: New file: 4KB boundary directed test
 //==============================================================================
 // File        : axi4_4kb_boundary_test.sv
 // Project     : AXI4 VIP

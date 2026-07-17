@@ -1,4 +1,4 @@
-//Hoang Ho - New file: BREADY/RREADY response-backpressure test
+//Hoang Ho: New file: BREADY/RREADY response-backpressure test
 //==============================================================================
 // File        : axi4_response_backpressure_test.sv
 // Project     : AXI4 VIP

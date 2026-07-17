@@ -1,4 +1,4 @@
-//Hoang Ho - New file: 4KB boundary directed sequence
+// Hoang Ho: New file: 4KB boundary directed sequence
 //==============================================================================
 // File        : axi4_4kb_boundary_seq.sv
 // Project     : AXI4 VIP
@@ -26,7 +26,7 @@ class axi4_4kb_boundary_seq extends axi4_base_sequence;
     // This keeps the directed sequence independent from transaction helper
     // functions and avoids inline-randomize function-scope issues.
     // -------------------------------------------------------------------------
-    //Hoang Ho - Shared helper wrappers keep this sequence aligned with the
+    // Hoang Ho: Shared helper wrappers keep this sequence aligned with the
     // transaction, slave, scoreboard, coverage, and SVA implementation.
     protected function bit [AXI4_ADDR_WIDTH-1:0] local_calc_beat_addr(
         bit [AXI4_ADDR_WIDTH-1:0] start_addr,
@@ -58,7 +58,7 @@ class axi4_4kb_boundary_seq extends axi4_base_sequence;
         bit [7:0]                len,
         axi4_size_e              size,
         axi4_burst_type_e        burst,
-        bit [31:0]               base_data
+        bit [31:0]               legacy_word
     );
         axi4_transaction tr;
         int unsigned beats;
@@ -85,13 +85,13 @@ class axi4_4kb_boundary_seq extends axi4_base_sequence;
         tr.rresp = new[0];
 
         for (int i = 0; i < beats; i++) begin
-            tr.data[i] = base_data + i;
+            tr.data[i] = axi4_expand_legacy_word(legacy_word, i);
             tr.strb[i] = local_calc_legal_wstrb_mask(addr, i, size, burst, len);
         end
 
         start_item(tr);
         finish_item(tr);
-        wait (tr.completed); //Hoang Ho - persistent completion wait
+        wait (tr.completed); // Hoang Ho: persistent completion wait
     endtask : send_write
 
     // -------------------------------------------------------------------------
@@ -136,7 +136,7 @@ class axi4_4kb_boundary_seq extends axi4_base_sequence;
 
         start_item(tr);
         finish_item(tr);
-        wait (tr.completed); //Hoang Ho - persistent completion wait
+        wait (tr.completed); // Hoang Ho: persistent completion wait
     endtask : send_read
 
     virtual task body();
@@ -162,7 +162,7 @@ class axi4_4kb_boundary_seq extends axi4_base_sequence;
         send_read ("rd_4kb_wrap", 4'h3, 32'h0000_0FC0,
                    8'd3, AXI4_SIZE_4B, AXI4_BURST_WRAP);
 
-        //Hoang Ho - Case 2b exposes the old false 4KB failure. The WRAP
+        // Hoang Ho: Case 2b exposes the old false 4KB failure. The WRAP
         // container is [0x0FF0:0x0FFF], although the first address is 0x0FFC.
         send_write("wr_4kb_wrap_edge", 4'h5, 32'h0000_0FFC,
                    8'd3, AXI4_SIZE_4B, AXI4_BURST_WRAP, 32'h4B00_0250);
@@ -183,5 +183,3 @@ class axi4_4kb_boundary_seq extends axi4_base_sequence;
 endclass : axi4_4kb_boundary_seq
 
 `endif // AXI4_4KB_BOUNDARY_SEQ_INCLUDED_
-
-//Hoang Ho - End of new 4KB boundary directed sequence

@@ -56,7 +56,7 @@ class axi4_cache_prot_seq extends axi4_base_sequence;
             finish_item(rd_tr);
 
             `uvm_info(get_type_name(),
-                      $sformatf("[%0d/16] Swept CACHE=0b%04b PROT=0b%03b (Write & Read)", 
+                      $sformatf("[%0d/16] Swept CACHE=0b%04b PROT=0b%03b (Write & Read)",
                                 c + 1, c, c % 8), UVM_HIGH)
         end
 

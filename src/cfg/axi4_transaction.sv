@@ -13,6 +13,7 @@
 //               This file is `included inside axi4_pkg.sv.
 //=============================================================================
 
+//Huy Le: original architecture and baseline implementation.
 class axi4_transaction extends uvm_sequence_item;
 
     //-------------------------------------------------------------------------
@@ -48,10 +49,9 @@ class axi4_transaction extends uvm_sequence_item;
     // Bus completion event - triggered by driver when B/R response is received.
     // Sequences can wait on this to implement true outstanding depth control.
     axi4_event_wrapper                      done_event;
-    //Hoang Ho - BEGIN: persistent completion state avoids a lost event race
+    //Hoang Ho: persistent completion state avoids a lost event race
     bit                                     completed = 0;
     time                                    completion_time = 0;
-    //Hoang Ho - END: persistent completion state avoids a lost event race
 
     //-------------------------------------------------------------------------
     // UVM utility macro
@@ -81,7 +81,7 @@ class axi4_transaction extends uvm_sequence_item;
     //-------------------------------------------------------------------------
 
 
-    //Hoang Ho - BEGIN: compatibility wrappers around shared protocol helpers
+    //Hoang Ho: compatibility wrappers around shared protocol helpers
     function bit [AXI4_ADDR_WIDTH-1:0] calc_beat_addr(
         bit [AXI4_ADDR_WIDTH-1:0] start_addr,
         int unsigned              beat_idx,
@@ -101,7 +101,6 @@ class axi4_transaction extends uvm_sequence_item;
     );
         return axi4_calc_legal_lane_mask(start_addr, beat_idx, size_i, burst_i, len_i);
     endfunction : calc_legal_wstrb_mask
-    //Hoang Ho - END: compatibility wrappers around shared protocol helpers
 
     // Data / strobe array size must match burst length
     constraint c_data_size {
@@ -119,11 +118,12 @@ class axi4_transaction extends uvm_sequence_item;
 
     // Burst size must not exceed data bus width
     // 2^size <= DATA_WIDTH / 8  ->  size <= log2(DATA_WIDTH / 8)
+    //Hoang Ho: solver-native maximum transfer size for the compiled bus width.
     constraint c_size_max {
-        (1 << size) <= (AXI4_DATA_WIDTH / 8);
+        size <= AXI4_MAX_SIZE;
     }
 
-    //Hoang Ho - BEGIN: solver-native AXI4 4KB and WSTRB legality constraints
+    //Hoang Ho: solver-native AXI4 4KB and WSTRB legality constraints
     // Do not call axi4_burst_crosses_4kb() from a random constraint. Questa
     // 10.6b treats a user function as a black box: addr/size/burst/len can be
     // chosen before the function result is known, so a legal solution can be
@@ -145,14 +145,10 @@ class axi4_transaction extends uvm_sequence_item;
         }
     }
 
-    // A write can select any subset of the legal byte lanes, including zero
-    // strobes, but it must never select a lane outside the transfer container.
-    constraint c_write_strb_legal {
-        if (dir == AXI4_WRITE) {
-            foreach (strb[i])
-                (strb[i] & ~axi4_calc_legal_lane_mask(addr, i, size, burst, len)) == '0;
-        }
-    }
+    //Hoang Ho: WSTRB legality is applied in post_randomize(). Questa 10.6b can
+    // treat user functions inside constraints as black boxes and fail to backtrack.
+    // Directed sequences that assign WSTRB manually are still checked by SVA,
+    // the slave model, and the scoreboard.
 
     // Ordinary traffic is normal by default. Dedicated exclusive sequences
     // override this soft constraint explicitly. Besides matching the intended
@@ -161,7 +157,6 @@ class axi4_transaction extends uvm_sequence_item;
     constraint c_lock_default {
         soft lock == AXI4_LOCK_NORMAL;
     }
-    //Hoang Ho - END: solver-native AXI4 4KB and WSTRB legality constraints
 
     // WRAP burst: len must be 2, 4, 8, or 16 beats (len = 1, 3, 7, 15)
     constraint c_wrap_len {
@@ -243,6 +238,19 @@ class axi4_transaction extends uvm_sequence_item;
         };
         (dir == AXI4_READ) -> wr_order == AXI4_WR_PARALLEL;
     }
+
+
+    //Hoang Ho: sanitize random write strobes after the solver has selected the
+    // address, size, burst and length. AXI4 permits any subset of the legal byte
+    // lanes, including zero, but never a lane outside the current transfer.
+    function void post_randomize();
+        completed       = 1'b0;
+        completion_time = 0;
+        if (dir == AXI4_WRITE) begin
+            foreach (strb[i])
+                strb[i] &= axi4_calc_legal_lane_mask(addr, i, size, burst, len);
+        end
+    endfunction : post_randomize
 
     //-------------------------------------------------------------------------
     // Constructor
@@ -334,9 +342,9 @@ class axi4_transaction extends uvm_sequence_item;
         s = {s, $sformatf("\n DATA[%0d] = {",   data.size())};
         foreach (data[i]) begin
             if (dir == AXI4_WRITE)
-                s = {s, $sformatf("\n   [%0d] 0x%08h  STRB=0b%0b", i, data[i], strb[i])};
+                s = {s, $sformatf("\n   [%0d] 0x%0h  STRB=0b%0b", i, data[i], strb[i])};
             else
-                s = {s, $sformatf("\n   [%0d] 0x%08h  RRESP=%s", i, data[i],
+                s = {s, $sformatf("\n   [%0d] 0x%0h  RRESP=%s", i, data[i],
                                   (i < rresp.size()) ? rresp[i].name() : "N/A")};
         end
         s = {s, "\n }"};

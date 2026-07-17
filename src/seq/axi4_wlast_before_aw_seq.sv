@@ -12,6 +12,9 @@
 //               This file is `included inside axi4_pkg.sv.
 //==============================================================================
 
+//Huy Le: original W-before-AW corner scenario.
+//Hoang Ho: full-width transfers and strobes scale with DATA_WIDTH.
+
 `ifndef AXI4_WLAST_BEFORE_AW_SEQ_INCLUDED_
 `define AXI4_WLAST_BEFORE_AW_SEQ_INCLUDED_
 
@@ -40,13 +43,13 @@ class axi4_wlast_before_aw_seq extends axi4_base_sequence;
                 wr_order == AXI4_WR_W_BEFORE_AW;   // W data begins before AW
                 addr     == 32'h0000_4000 + (i * 32'h100);
                 len      == len_list[i];
-                size     == AXI4_SIZE_4B;
+                size     == axi4_size_e'(AXI4_MAX_SIZE);
                 burst    == AXI4_BURST_INCR;
                 id       == i[AXI4_ID_WIDTH-1:0];
-                foreach (strb[j]) strb[j] == 4'b1111;
+                foreach (strb[j]) strb[j] == '1;
             }) `uvm_fatal(get_type_name(), "Randomization failed for W_BEFORE_AW write")
             finish_item(tr);
-            wait (tr.completed); //Hoang Ho - persistent completion wait
+            wait (tr.completed); //Hoang Ho: persistent completion wait
 
             `uvm_info(get_type_name(),
                       $sformatf("W_BEFORE_AW done: ADDR=0x%08h LEN=%0d (%0d beats) RESP=%s",

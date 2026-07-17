@@ -16,6 +16,7 @@
 //               This file is `included inside axi4_pkg.sv.
 //==============================================================================
 
+//Huy Le: original architecture and baseline implementation.
 class axi4_slave_driver extends uvm_driver #(axi4_transaction);
 
     `uvm_component_utils(axi4_slave_driver)
@@ -28,7 +29,7 @@ class axi4_slave_driver extends uvm_driver #(axi4_transaction);
     // =========================================================================
     bit [7:0] mem [bit [AXI4_ADDR_WIDTH-1:0]];
 
-    //Hoang Ho - BEGIN: Extended exclusive reservation attributes for AXI4 Full
+    //Hoang Ho: Extended exclusive reservation attributes for AXI4 Full
     // Exclusive reservation table per AXI4 spec (Key: transaction ID).
     //   The reservation records the exclusive-read attributes. The paired
     //   exclusive write succeeds only if ID, address, size, length, burst and
@@ -44,7 +45,6 @@ class axi4_slave_driver extends uvm_driver #(axi4_transaction);
         bit [3:0]                 region;
     } excl_res_t;
     protected excl_res_t excl_res [bit [AXI4_ID_WIDTH-1:0]];
-    //Hoang Ho - END: Extended exclusive reservation attributes for AXI4 Full
 
     // Internal FIFO structs and queues to support outstanding transactions
     typedef struct {
@@ -54,11 +54,10 @@ class axi4_slave_driver extends uvm_driver #(axi4_transaction);
         bit [2:0]                 size;
         bit [1:0]                 burst;
         axi4_lock_e               lock;
-        //Hoang Ho - BEGIN: Capture extra AW attributes for exclusive/access policy
+        //Hoang Ho: Capture extra AW attributes for exclusive/access policy
         bit [3:0]                 cache;
         bit [2:0]                 prot;
         bit [3:0]                 region;
-        //Hoang Ho - END: Capture extra AW attributes for exclusive/access policy
     } aw_info_t;
 
     typedef struct {
@@ -78,12 +77,11 @@ class axi4_slave_driver extends uvm_driver #(axi4_transaction);
         bit [2:0]                 size;
         bit [1:0]                 burst;
         axi4_lock_e               lock;
-        //Hoang Ho - BEGIN: Capture extra AR attributes for exclusive/access policy
+        //Hoang Ho: Capture extra AR attributes for exclusive/access policy
         bit [3:0]                 cache;
         bit [2:0]                 prot;
         bit [3:0]                 region;
-        //Hoang Ho - END: Capture extra AR attributes for exclusive/access policy
-        //Hoang Ho - request sequence number within one RID; used to preserve
+        //Hoang Ho: request sequence number within one RID; used to preserve
         // same-ID response ordering while still allowing different-ID OOO.
         int unsigned              order_idx;
     } ar_info_t;
@@ -104,27 +102,28 @@ class axi4_slave_driver extends uvm_driver #(axi4_transaction);
     int unsigned resp_delay_min  = 0;
     int unsigned resp_delay_max  = 0;
 
-    //Hoang Ho - subordinate can keep WREADY continuously HIGH for a corner test.
+    //Hoang Ho: subordinate can keep WREADY continuously HIGH for a corner test.
     bit wready_always_high = 0;
 
-    // Out-of-order read response control
-    //   r_reorder_enable  : when 1, read responses may be reordered across IDs
-    //   r_outstanding_max : max concurrent read responses being prepared
-    bit          r_reorder_enable  = 0;
-    int unsigned r_outstanding_max = 4;
+    //Hoang Ho: read-response scheduling modes.
+    // r_reorder_enable selects a different RID at burst boundaries.
+    // r_interleave_enable selects a different eligible RID after every R beat.
+    // Only the front context of one RID is ever eligible, so same-ID order holds.
+    bit          r_reorder_enable         = 0;
+    bit          r_interleave_enable      = 0;
+    int unsigned r_interleave_start_depth = 2;
+    int unsigned r_interleave_start_wait  = 8;
+    int unsigned r_outstanding_max        = 4;
 
-    // R channel mutex - the default learning-profile subordinate emits one
-    // complete burst at a time. AXI4 permits interleaving between different
-    // RID values; the master and monitors accept it, but generation is optional.
-    protected semaphore r_channel_mutex;
-
-    //Hoang Ho - BEGIN: explicit same-ID read ordering counters
-    // A mutex acquired after random preparation can allow a later same-ID
-    // request to overtake an earlier one. Sequence counters make the order
-    // deterministic from AR handshake order.
-    protected int unsigned ar_issue_seq[bit [AXI4_ID_WIDTH-1:0]];
-    protected int unsigned ar_next_rsp_seq[bit [AXI4_ID_WIDTH-1:0]];
-    //Hoang Ho - END: explicit same-ID read ordering counters
+    protected int unsigned ar_issue_seq[axi4_id_t];
+    protected longint unsigned r_arrival_seq;
+    protected axi4_read_context r_pending[axi4_id_t][$];
+    protected axi4_read_context r_arrival_q[$];
+    protected axi4_id_t          r_active_ids[$];
+    protected axi4_read_context  r_locked_ctx;
+    protected int unsigned       r_rr_cursor;
+    protected int unsigned       r_context_count;
+    protected bit                r_interleave_window_open;
 
     // =========================================================================
     // Constructor
@@ -145,16 +144,18 @@ class axi4_slave_driver extends uvm_driver #(axi4_transaction);
         void'(uvm_config_db#(int unsigned)::get(this, "", "ready_delay_max", ready_delay_max));
         void'(uvm_config_db#(int unsigned)::get(this, "", "resp_delay_min",  resp_delay_min));
         void'(uvm_config_db#(int unsigned)::get(this, "", "resp_delay_max",  resp_delay_max));
-        //Hoang Ho - optional continuous-WREADY mode.
+        //Hoang Ho: optional continuous-WREADY mode.
         void'(uvm_config_db#(bit)::get(this, "", "wready_always_high", wready_always_high));
-        // Out-of-order read response configuration
-        void'(uvm_config_db#(bit)::get(this, "", "r_reorder_enable",  r_reorder_enable));
+        //Hoang Ho: read scheduling configuration.
+        void'(uvm_config_db#(bit)::get(this, "", "r_reorder_enable", r_reorder_enable));
+        void'(uvm_config_db#(bit)::get(this, "", "r_interleave_enable", r_interleave_enable));
+        void'(uvm_config_db#(int unsigned)::get(this, "", "r_interleave_start_depth", r_interleave_start_depth));
+        void'(uvm_config_db#(int unsigned)::get(this, "", "r_interleave_start_wait", r_interleave_start_wait));
         void'(uvm_config_db#(int unsigned)::get(this, "", "r_outstanding_max", r_outstanding_max));
-        //Hoang Ho - prevent a zero-sized semaphore from deadlocking the R path.
         if (r_outstanding_max == 0)
             r_outstanding_max = 1;
-        // Create R channel mutex
-        r_channel_mutex = new(1);
+        if (r_interleave_start_depth == 0)
+            r_interleave_start_depth = 1;
     endfunction : build_phase
 
     // =========================================================================
@@ -199,16 +200,17 @@ class axi4_slave_driver extends uvm_driver #(axi4_transaction);
         w_fifo.delete();
         b_fifo.delete();
         ar_fifo.delete();
-        //Hoang Ho - clear read ordering state on reset
+        //Hoang Ho: discard every outstanding read context on reset.
         ar_issue_seq.delete();
-        ar_next_rsp_seq.delete();
+        r_pending.delete();
+        r_arrival_q.delete();
+        r_active_ids.delete();
+        r_locked_ctx = null;
+        r_rr_cursor = 0;
+        r_context_count = 0;
+        r_arrival_seq = 0;
+        r_interleave_window_open = 0;
         excl_res.delete();      // drop all exclusive reservations on reset
-
-        // Re-create the R-channel mutex. If reset aborts a drive_r_single thread
-        // while it holds this mutex, the kill (disable fork) skips its put(1),
-        // leaving the old semaphore locked forever. A fresh one guarantees the
-        // R channel is usable again after reset.
-        r_channel_mutex = new(1);
     endtask : reset_signals
 
     // =========================================================================
@@ -254,7 +256,7 @@ class axi4_slave_driver extends uvm_driver #(axi4_transaction);
             rand_ready_delay();
             vif.slave_cb.AWREADY <= 1'b1;
 
-            //Hoang Ho - BEGIN: sample AW payload only at real handshake, not before READY
+            //Hoang Ho: sample AW payload only at real handshake, not before READY
             //Hoang Ho
             // AWREADY is a clocking-block output and must not be read back in
             // Questa. The driver already holds AWREADY high, so AWVALID sampled
@@ -274,7 +276,6 @@ class axi4_slave_driver extends uvm_driver #(axi4_transaction);
             info.region = vif.slave_cb.AWREGION;
 
             vif.slave_cb.AWREADY <= 1'b0;
-            //Hoang Ho - END: sample AW payload only at real handshake, not before READY
 
             `uvm_info(get_type_name(),
                       $sformatf("AW received: ID=0x%0h ADDR=0x%08h LEN=%0d LOCK=%s",
@@ -285,7 +286,7 @@ class axi4_slave_driver extends uvm_driver #(axi4_transaction);
 
     // ----- W Collector: collects W bursts from master -----
     task collect_w();
-        //Hoang Ho - BEGIN: support both pulsed and continuously-high WREADY
+        //Hoang Ho: support both pulsed and continuously-high WREADY
         if (wready_always_high) begin
             vif.slave_cb.WREADY <= 1'b1;
             forever begin
@@ -325,7 +326,6 @@ class axi4_slave_driver extends uvm_driver #(axi4_transaction);
                 w_fifo.push_back(burst);
             end
         end
-        //Hoang Ho - END: support both pulsed and continuously-high WREADY
     endtask : collect_w
 
     // ----- Write Executor: matches AW and W, writes to memory -----
@@ -362,7 +362,7 @@ class axi4_slave_driver extends uvm_driver #(axi4_transaction);
                     wr_resp = AXI4_RESP_OKAY;
                     do_write = 0;
                 end else if (excl_res.exists(aw.id) && excl_res[aw.id].valid &&
-                             //Hoang Ho - BEGIN: match extra exclusive attributes
+                             //Hoang Ho: match extra exclusive attributes
                              excl_res[aw.id].addr   == aw.addr   &&
                              excl_res[aw.id].size   == aw.size   &&
                              excl_res[aw.id].len    == aw.len    &&
@@ -370,7 +370,6 @@ class axi4_slave_driver extends uvm_driver #(axi4_transaction);
                              excl_res[aw.id].cache  == aw.cache  &&
                              excl_res[aw.id].prot   == aw.prot   &&
                              excl_res[aw.id].region == aw.region) begin
-                    //Hoang Ho - END: match extra exclusive attributes
                     wr_resp = AXI4_RESP_EXOKAY;
                     excl_res[aw.id].valid = 0;   // reservation consumed
                     // do_write stays 1 -> the store is committed below
@@ -382,7 +381,7 @@ class axi4_slave_driver extends uvm_driver #(axi4_transaction);
                 wr_resp = AXI4_RESP_OKAY;
             end
 
-            //Hoang Ho - BEGIN: reject byte strobes outside the legal transfer lanes
+            //Hoang Ho: reject byte strobes outside the legal transfer lanes
             if (do_write) begin
                 for (int beat = 0; beat < w.data_q.size(); beat++) begin
                     bit [AXI4_STRB_WIDTH-1:0] legal_mask;
@@ -396,7 +395,6 @@ class axi4_slave_driver extends uvm_driver #(axi4_transaction);
                     end
                 end
             end
-            //Hoang Ho - END: reject byte strobes outside the legal transfer lanes
 
             if (do_write) begin
                 for (int beat = 0; beat < w.data_q.size(); beat++) begin
@@ -449,19 +447,20 @@ class axi4_slave_driver extends uvm_driver #(axi4_transaction);
     endtask : drive_b
 
     // =========================================================================
-    // Handle Reads - forks collector and driver to support outstanding reads.
-    //   When r_reorder_enable is set, responses may arrive out-of-order
-    //   across different IDs. The default learning subordinate emits each
-    //   burst contiguously, while the receiving path remains RID-interleave capable.
+    // Handle Reads
+    //Huy Le: AR collection and reactive memory response model.
+    //Hoang Ho: one scheduler owns the physical R channel and can switch RID
+    // after each accepted beat. This is legal only across different IDs.
     // =========================================================================
     task handle_reads();
         fork
             collect_ar();
-            dispatch_r_responses();
+            prepare_r_contexts();
+            drive_r_scheduler();
         join
     endtask : handle_reads
 
-    // ----- AR Collector: listens and handshakes AR address phases -----
+    //Huy Le: AR collector. Hoang Ho: order_idx records acceptance order per RID.
     task collect_ar();
         forever begin
             ar_info_t info;
@@ -472,14 +471,10 @@ class axi4_slave_driver extends uvm_driver #(axi4_transaction);
             rand_ready_delay();
             vif.slave_cb.ARREADY <= 1'b1;
 
-            //Hoang Ho - BEGIN: sample AR payload only at real handshake, not before READY
-            //Hoang Ho
-            // ARREADY is a clocking-block output and must not be read back in
-            // Questa. The driver already holds ARREADY high, so ARVALID sampled
-            // at the next clocking event is exactly the AR handshake condition.
+            // ARREADY is already HIGH. Sample only when ARVALID is observed at
+            // the following clocking event, which is the actual handshake.
             do @(vif.slave_cb);
             while (!vif.slave_cb.ARVALID);
-            //Hoang Ho
 
             info.id     = vif.slave_cb.ARID;
             info.addr   = vif.slave_cb.ARADDR;
@@ -490,92 +485,75 @@ class axi4_slave_driver extends uvm_driver #(axi4_transaction);
             info.cache  = vif.slave_cb.ARCACHE;
             info.prot   = vif.slave_cb.ARPROT;
             info.region = vif.slave_cb.ARREGION;
-            //Hoang Ho - assign a monotonically increasing sequence per RID at
-            // the actual AR handshake.
             if (!ar_issue_seq.exists(info.id))
                 ar_issue_seq[info.id] = 0;
             info.order_idx = ar_issue_seq[info.id];
             ar_issue_seq[info.id]++;
 
             vif.slave_cb.ARREADY <= 1'b0;
-            //Hoang Ho - END: sample AR payload only at real handshake, not before READY
+            ar_fifo.push_back(info);
 
             `uvm_info(get_type_name(),
-                      $sformatf("AR received: ID=0x%0h ADDR=0x%08h LEN=%0d LOCK=%s",
-                                info.id, info.addr, info.len, info.lock.name()), UVM_HIGH)
-            ar_fifo.push_back(info);
+                      $sformatf("AR received: ID=0x%0h ADDR=0x%08h LEN=%0d ORDER=%0d",
+                                info.id, info.addr, info.len, info.order_idx), UVM_HIGH)
         end
     endtask : collect_ar
 
-    // ----- R Dispatcher: forks a thread per AR request for OOO support -----
-    //   A semaphore limits the number of concurrent read-response threads.
-    //   Each thread prepares its data independently, then acquires the
-    //   R channel mutex to drive beats atomically (no interleaving).
-    task dispatch_r_responses();
-        semaphore r_outstanding_sem = new(r_outstanding_max);
+    //Hoang Ho: prepare response/data without driving the shared R channel.
+    // The bounded context count models finite subordinate buffering; AR requests
+    // already accepted by collect_ar remain queued until space is available.
+    task prepare_r_contexts();
         forever begin
             ar_info_t ar;
-            wait (ar_fifo.size() > 0);
+            axi4_read_context ctx;
+
+            wait (ar_fifo.size() > 0 && r_context_count < r_outstanding_max);
             ar = ar_fifo.pop_front();
-
-            //Hoang Ho - initialize the next expected response sequence for RID.
-            if (!ar_next_rsp_seq.exists(ar.id))
-                ar_next_rsp_seq[ar.id] = 0;
-
-            r_outstanding_sem.get(1);
-            fork
-                automatic ar_info_t ar_local = ar;
-                begin
-                    drive_r_single(ar_local);
-                    r_outstanding_sem.put(1);
-                end
-            join_none
+            build_read_context(ar, ctx);
+            enqueue_read_context(ctx);
         end
-    endtask : dispatch_r_responses
+    endtask : prepare_r_contexts
 
-    // ----- R Single: prepare data and drive R beats for one AR request -----
-    task drive_r_single(ar_info_t ar);
-        axi4_resp_e rd_resp;
-        // Pre-read data from memory (can happen concurrently for different IDs)
-        bit [AXI4_DATA_WIDTH-1:0] rdata_q[$];
-
-        //Hoang Ho - BEGIN: preserve AR acceptance order for the same RID
-        wait (ar_next_rsp_seq.exists(ar.id) &&
-              ar.order_idx == ar_next_rsp_seq[ar.id]);
-        //Hoang Ho - END: preserve AR acceptance order for the same RID
+    task build_read_context(ar_info_t ar, output axi4_read_context ctx);
+        ctx = new();
+        ctx.id          = ar.id;
+        ctx.addr        = ar.addr;
+        ctx.len         = ar.len;
+        ctx.size        = ar.size;
+        ctx.burst       = axi4_burst_type_e'(ar.burst);
+        ctx.lock        = ar.lock;
+        ctx.cache       = ar.cache;
+        ctx.prot        = ar.prot;
+        ctx.region      = ar.region;
+        ctx.order_idx   = ar.order_idx;
+        ctx.arrival_idx = r_arrival_seq++;
 
         if (ar.addr >= 32'hF000_0000) begin
-            rd_resp = AXI4_RESP_DECERR;
+            ctx.resp = AXI4_RESP_DECERR;
         end else if (ar.addr >= 32'hE000_0000) begin
-            rd_resp = AXI4_RESP_SLVERR;
+            ctx.resp = AXI4_RESP_SLVERR;
         end else if (ar.lock == AXI4_LOCK_EXCLUSIVE) begin
-            // Exclusive read: record the reservation only if the access is a
-            // legal exclusive access. An illegal one is a master protocol
-            // violation - flag it and respond OKAY (no reservation set).
             if (!is_legal_exclusive(ar.addr, ar.size, ar.len)) begin
                 `uvm_error(get_type_name(),
-                           $sformatf("Illegal exclusive READ: ID=0x%0h ADDR=0x%08h SIZE=%0d LEN=%0d violates AXI4 exclusive constraints (pow2 bytes<=128, len<=16, aligned)",
+                           $sformatf("Illegal exclusive READ: ID=0x%0h ADDR=0x%08h SIZE=%0d LEN=%0d",
                                      ar.id, ar.addr, ar.size, ar.len))
-                rd_resp = AXI4_RESP_OKAY;
+                ctx.resp = AXI4_RESP_OKAY;
             end else begin
-                rd_resp = AXI4_RESP_EXOKAY;
-                //Hoang Ho - BEGIN: store extra exclusive reservation attributes
+                ctx.resp = AXI4_RESP_EXOKAY;
                 excl_res[ar.id] = '{valid:1'b1, addr:ar.addr, size:ar.size, len:ar.len,
                                     burst:ar.burst, cache:ar.cache, prot:ar.prot, region:ar.region};
-                //Hoang Ho - END: store extra exclusive reservation attributes
             end
         end else begin
-            rd_resp = AXI4_RESP_OKAY;
+            ctx.resp = AXI4_RESP_OKAY;
         end
 
-        //Hoang Ho - BEGIN: correct AXI4 byte-lane mapping for read data
-        // Only the legal lanes are populated. For an unaligned first beat the
-        // lane range stops at the transfer boundary and never wraps to lane 0.
+        // Build one bus-width RDATA value for every transfer. Inactive lanes are
+        // zero and an unaligned first beat never wraps into lower lanes.
         for (int beat = 0; beat <= ar.len; beat++) begin
-            bit [AXI4_ADDR_WIDTH-1:0] beat_addr;
-            bit [AXI4_ADDR_WIDTH-1:0] bus_base;
-            bit [AXI4_STRB_WIDTH-1:0] lane_mask;
-            bit [AXI4_DATA_WIDTH-1:0] rdata;
+            axi4_addr_t beat_addr;
+            axi4_addr_t bus_base;
+            axi4_strb_t lane_mask;
+            axi4_data_t rdata;
 
             beat_addr = axi4_calc_beat_addr(ar.addr, beat, ar.size,
                                              axi4_burst_type_e'(ar.burst), ar.len);
@@ -583,59 +561,177 @@ class axi4_slave_driver extends uvm_driver #(axi4_transaction);
             lane_mask = axi4_calc_legal_lane_mask(ar.addr, beat, ar.size,
                                                    axi4_burst_type_e'(ar.burst), ar.len);
             rdata = '0;
-
             for (int lane = 0; lane < AXI4_STRB_WIDTH; lane++) begin
-                bit [AXI4_ADDR_WIDTH-1:0] byte_addr;
+                axi4_addr_t byte_addr;
                 byte_addr = bus_base + lane;
                 if (lane_mask[lane] && mem.exists(byte_addr))
                     rdata[lane*8 +: 8] = mem[byte_addr];
             end
-            rdata_q.push_back(rdata);
+            ctx.data_q.push_back(rdata);
         end
-        //Hoang Ho - END: correct AXI4 byte-lane mapping for read data
+    endtask : build_read_context
 
-        //Hoang Ho - same-ID ordering is already guaranteed by order_idx above.
+    function void enqueue_read_context(axi4_read_context ctx);
+        bit new_rid;
+        new_rid = !r_pending.exists(ctx.id) || (r_pending[ctx.id].size() == 0);
+        r_pending[ctx.id].push_back(ctx);
+        r_arrival_q.push_back(ctx);
+        r_context_count++;
+        if (new_rid)
+            r_active_ids.push_back(ctx.id);
+    endfunction : enqueue_read_context
 
-        // When reordering is enabled, add a random delay before acquiring
-        // the channel mutex.  This creates natural reordering: a later
-        // request with a shorter delay will drive before an earlier one.
-        if (r_reorder_enable) begin
-            int unsigned reorder_delay;
-            reorder_delay = $urandom_range(10, 0);
-            repeat (reorder_delay) @(vif.slave_cb);
+    function axi4_read_context choose_interleaved_context();
+        axi4_read_context ctx;
+        if (r_active_ids.size() == 0)
+            return null;
+        if (r_rr_cursor >= r_active_ids.size())
+            r_rr_cursor = 0;
+
+        for (int offset = 0; offset < r_active_ids.size(); offset++) begin
+            int idx;
+            axi4_id_t id;
+            idx = (r_rr_cursor + offset) % r_active_ids.size();
+            id  = r_active_ids[idx];
+            if (r_pending.exists(id) && r_pending[id].size() > 0) begin
+                ctx = r_pending[id][0];
+                r_rr_cursor = (idx + 1) % r_active_ids.size();
+                return ctx;
+            end
+        end
+        return null;
+    endfunction : choose_interleaved_context
+
+    function axi4_read_context choose_burst_context();
+        axi4_read_context ctx;
+        if (r_locked_ctx != null)
+            return r_locked_ctx;
+
+        if (r_reorder_enable && r_active_ids.size() > 0) begin
+            int idx;
+            axi4_id_t id;
+            idx = $urandom_range(r_active_ids.size()-1, 0);
+            id  = r_active_ids[idx];
+            if (r_pending.exists(id) && r_pending[id].size() > 0)
+                ctx = r_pending[id][0];
+        end else if (r_arrival_q.size() > 0) begin
+            ctx = r_arrival_q[0];
+        end
+        r_locked_ctx = ctx;
+        return ctx;
+    endfunction : choose_burst_context
+
+    function void remove_active_rid(axi4_id_t id);
+        for (int i = 0; i < r_active_ids.size(); i++) begin
+            if (r_active_ids[i] == id) begin
+                r_active_ids.delete(i);
+                if (r_rr_cursor > i)
+                    r_rr_cursor--;
+                if (r_rr_cursor >= r_active_ids.size())
+                    r_rr_cursor = 0;
+                return;
+            end
+        end
+    endfunction : remove_active_rid
+
+    function void remove_arrival_context(axi4_read_context ctx);
+        for (int i = 0; i < r_arrival_q.size(); i++) begin
+            if (r_arrival_q[i] == ctx) begin
+                r_arrival_q.delete(i);
+                return;
+            end
+        end
+    endfunction : remove_arrival_context
+
+    function void complete_read_context(axi4_read_context ctx);
+        if (!r_pending.exists(ctx.id) || r_pending[ctx.id].size() == 0 ||
+            r_pending[ctx.id][0] != ctx) begin
+            `uvm_error(get_type_name(),
+                       $sformatf("Internal read-order error for RID=0x%0h", ctx.id))
+            return;
         end
 
-        // Acquire R channel mutex - only one thread drives R beats at a time
-        // This learning-profile subordinate emits one complete burst at a time.
-        // AXI4 permits read-data interleaving across different IDs, and the
-        // master receiver can accept it, but the default slave model keeps the
-        // R channel non-interleaved for simpler deterministic stimulus.
-        r_channel_mutex.get(1);
+        void'(r_pending[ctx.id].pop_front());
+        if (r_pending[ctx.id].size() == 0) begin
+            r_pending.delete(ctx.id);
+            remove_active_rid(ctx.id);
+        end
+        remove_arrival_context(ctx);
+        if (r_context_count > 0)
+            r_context_count--;
+        if (r_locked_ctx == ctx)
+            r_locked_ctx = null;
+        if (r_context_count == 0)
+            r_interleave_window_open = 0;
+    endfunction : complete_read_context
 
-        for (int beat = 0; beat <= ar.len; beat++) begin
-            rand_resp_delay();
-            @(vif.slave_cb);
-            vif.slave_cb.RID    <= ar.id;
-            vif.slave_cb.RDATA  <= rdata_q[beat];
-            vif.slave_cb.RRESP  <= rd_resp;
-            vif.slave_cb.RLAST  <= (beat == ar.len) ? 1'b1 : 1'b0;
-            vif.slave_cb.RVALID <= 1'b1;
+    task drive_r_scheduler();
+        forever begin
+            axi4_read_context ctx;
+            wait (r_context_count > 0);
 
-            do @(vif.slave_cb);
-            while (!vif.slave_cb.RREADY);
+            // Give a second RID a bounded opportunity to arrive. This makes the
+            // directed interleaving test deterministic without deadlocking a
+            // legal single-read transaction.
+            if (r_interleave_enable && !r_interleave_window_open) begin
+                int waited;
+                waited = 0;
+                while (r_active_ids.size() < r_interleave_start_depth &&
+                       waited < r_interleave_start_wait) begin
+                    @(vif.slave_cb);
+                    waited++;
+                end
+                r_interleave_window_open = 1;
+            end
 
-            vif.slave_cb.RVALID <= 1'b0;
-            vif.slave_cb.RLAST  <= 1'b0;
+            if (r_interleave_enable)
+                ctx = choose_interleaved_context();
+            else
+                ctx = choose_burst_context();
+
+            if (ctx == null) begin
+                @(vif.slave_cb);
+                continue;
+            end
+
+            drive_one_r_beat(ctx);
+            if (ctx.beat_idx > ctx.len) begin
+                `uvm_info(get_type_name(),
+                          $sformatf("Read complete: RID=0x%0h ADDR=0x%08h RESP=%s beats=%0d",
+                                    ctx.id, ctx.addr, ctx.resp.name(), ctx.len+1), UVM_MEDIUM)
+                complete_read_context(ctx);
+            end
+        end
+    endtask : drive_r_scheduler
+
+    task drive_one_r_beat(axi4_read_context ctx);
+        int unsigned beat;
+        beat = ctx.beat_idx;
+        if (beat > ctx.len || beat >= ctx.data_q.size()) begin
+            `uvm_error(get_type_name(),
+                       $sformatf("Read context beat overflow RID=0x%0h beat=%0d LEN=%0d",
+                                 ctx.id, beat, ctx.len))
+            ctx.beat_idx = ctx.len + 1;
+            return;
         end
 
-        r_channel_mutex.put(1);
-        //Hoang Ho - release the next same-ID request only after this burst ends.
-        ar_next_rsp_seq[ar.id]++;
+        rand_resp_delay();
+        @(vif.slave_cb);
+        vif.slave_cb.RID    <= ctx.id;
+        vif.slave_cb.RDATA  <= ctx.data_q[beat];
+        vif.slave_cb.RRESP  <= ctx.resp;
+        vif.slave_cb.RLAST  <= (beat == ctx.len);
+        vif.slave_cb.RVALID <= 1'b1;
 
-        `uvm_info(get_type_name(),
-                  $sformatf("Read complete: ID=0x%0h ADDR=0x%08h RESP=%s  %0d beats sent",
-                            ar.id, ar.addr, rd_resp.name(), ar.len + 1), UVM_MEDIUM)
-    endtask : drive_r_single
+        // The selected beat remains unchanged for every stall cycle. A new RID
+        // can be selected only after RVALID && RREADY accepts this beat.
+        do @(vif.slave_cb);
+        while (!vif.slave_cb.RREADY);
+
+        vif.slave_cb.RVALID <= 1'b0;
+        vif.slave_cb.RLAST  <= 1'b0;
+        ctx.beat_idx++;
+    endtask : drive_one_r_beat
 
     // =========================================================================
     // is_legal_exclusive - validate exclusive access constraints (AXI4 spec A7.2)
@@ -690,13 +786,13 @@ class axi4_slave_driver extends uvm_driver #(axi4_transaction);
         bit [1:0]                 burst_type,
         bit [7:0]                 len
     );
-        //Hoang Ho - use the shared, spec-correct burst address helper.
+        //Hoang Ho: use the shared, spec-correct burst address helper.
         return axi4_calc_beat_addr(start_addr, beat_idx, size,
                                    axi4_burst_type_e'(burst_type), len);
     endfunction : calc_beat_addr
 
 
-    //Hoang Ho - BEGIN: legal WSTRB mask helper for AXI4 Full narrow/unaligned writes
+    //Hoang Ho: legal WSTRB mask helper for AXI4 Full narrow/unaligned writes
     // =========================================================================
     // calc_legal_wstrb_mask
     //   Calculates the legal byte-lane mask for a write beat according to:
@@ -713,10 +809,9 @@ class axi4_slave_driver extends uvm_driver #(axi4_transaction);
         bit [1:0]                 burst_type,
         bit [7:0]                 len
     );
-        //Hoang Ho - use the shared, spec-correct byte-lane helper.
+        //Hoang Ho: use the shared, spec-correct byte-lane helper.
         return axi4_calc_legal_lane_mask(start_addr, beat_idx, size,
                                           axi4_burst_type_e'(burst_type), len);
     endfunction : calc_legal_wstrb_mask
-    //Hoang Ho - END: legal WSTRB mask helper for AXI4 Full narrow/unaligned writes
 
 endclass : axi4_slave_driver

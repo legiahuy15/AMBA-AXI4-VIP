@@ -77,11 +77,13 @@ class axi4_slave_agent extends uvm_agent;
             uvm_config_db#(int unsigned)::set(this, "drv", "ready_delay_max", cfg.ready_delay_max);
             uvm_config_db#(int unsigned)::set(this, "drv", "resp_delay_min",  cfg.resp_delay_min);
             uvm_config_db#(int unsigned)::set(this, "drv", "resp_delay_max",  cfg.resp_delay_max);
-            //Hoang Ho - BEGIN: propagate optional learning-profile slave knobs
+            //Hoang Ho: propagate optional learning-profile slave knobs
             uvm_config_db#(bit)::set(this, "drv", "wready_always_high", cfg.wready_always_high);
-            uvm_config_db#(bit)::set(this, "drv", "r_reorder_enable",   cfg.r_reorder_enable);
+            uvm_config_db#(bit)::set(this, "drv", "r_reorder_enable", cfg.r_reorder_enable);
+            uvm_config_db#(bit)::set(this, "drv", "r_interleave_enable", cfg.r_interleave_enable);
+            uvm_config_db#(int unsigned)::set(this, "drv", "r_interleave_start_depth", cfg.r_interleave_start_depth);
+            uvm_config_db#(int unsigned)::set(this, "drv", "r_interleave_start_wait", cfg.r_interleave_start_wait);
             uvm_config_db#(int unsigned)::set(this, "drv", "r_outstanding_max", cfg.r_outstanding_max);
-            //Hoang Ho - END: propagate optional learning-profile slave knobs
 
             drv = axi4_slave_driver::type_id::create("drv", this);
             sqr = axi4_slave_sequencer::type_id::create("sqr", this);

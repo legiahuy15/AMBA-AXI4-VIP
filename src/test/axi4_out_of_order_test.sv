@@ -41,11 +41,10 @@ class axi4_out_of_order_test extends axi4_base_test;
 
         super.build_phase(phase);
 
-        //Hoang Ho - BEGIN: configure through env_cfg so the slave agent does
+        //Hoang Ho: configure through env_cfg so the slave agent does
         // not overwrite the test's reorder settings when it builds the driver.
         env_cfg.slave_agent_cfg.r_reorder_enable  = r_reorder;
         env_cfg.slave_agent_cfg.r_outstanding_max = (depth == 0) ? 1 : depth;
-        //Hoang Ho - END: configure through env_cfg
     endfunction : build_phase
 
     // =========================================================================

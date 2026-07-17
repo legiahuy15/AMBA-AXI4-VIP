@@ -13,10 +13,13 @@
 `ifndef AXI4_IF_INCLUDED_
 `define AXI4_IF_INCLUDED_
 
+`include "cfg/axi4_compile_cfg.svh"
+
+//Huy Le: original architecture and baseline implementation.
 interface axi4_if #(
-    parameter ADDR_WIDTH = 32,
-    parameter DATA_WIDTH = 32,
-    parameter ID_WIDTH   = 4
+    parameter ADDR_WIDTH = `AXI4_ADDR_WIDTH_CFG,
+    parameter DATA_WIDTH = `AXI4_DATA_WIDTH_CFG,
+    parameter ID_WIDTH   = `AXI4_ID_WIDTH_CFG
 )(
     input logic clk,
     input logic rst_n

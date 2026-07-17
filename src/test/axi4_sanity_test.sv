@@ -40,16 +40,21 @@ class axi4_sanity_test extends axi4_base_test;
             wr_rd_seq = axi4_write_read_back_seq::type_id::create(
                             $sformatf("wr_rd_seq_%0d", i));
 
-            // Randomise sequence-level fields (addr, len, size, burst)
+            // Huy Le: randomize the reusable write/read-back sequence.
+            // Hoang Ho: the sequence now carries the same AxSIZE, burst-length,
+            // WRAP, FIXED, and 4KB legality rules as axi4_transaction. This
+            // prevents a legal-looking sequence object from later forcing an
+            // illegal transaction tuple during staged randomization.
             if (!wr_rd_seq.randomize())
                 `uvm_fatal(get_type_name(),
                            $sformatf("Sequence randomization failed at iteration %0d", i))
 
             `uvm_info(get_type_name(),
-                      $sformatf("[%0d/%0d] ADDR=0x%08h LEN=%0d BURST=%s",
+                      $sformatf("[%0d/%0d] ADDR=0x%08h LEN=%0d SIZE=%s BURST=%s",
                                 i + 1, num_iterations,
                                 wr_rd_seq.addr, wr_rd_seq.len,
-                                wr_rd_seq.burst.name()), UVM_MEDIUM)
+                                wr_rd_seq.size.name(), wr_rd_seq.burst.name()),
+                      UVM_MEDIUM)
 
             wr_rd_seq.start(env.master_agent.sqr);
         end

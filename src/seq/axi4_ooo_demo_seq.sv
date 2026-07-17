@@ -13,6 +13,9 @@
 //               This file is `included inside axi4_pkg.sv.
 //==============================================================================
 
+//Huy Le: original different-ID out-of-order demonstration.
+//Hoang Ho: transfer size scales with DATA_WIDTH.
+
 `ifndef AXI4_OOO_DEMO_SEQ_INCLUDED_
 `define AXI4_OOO_DEMO_SEQ_INCLUDED_
 
@@ -45,7 +48,7 @@ class axi4_ooo_demo_seq extends axi4_base_sequence;
                         addr  == 32'h0000_1000 + (idx * 32'h100);  // 0x1000..0x1500
                         id    == idx[3:0];                         // distinct IDs 0..5
                         len   == 0;                                // single beat
-                        size  == AXI4_SIZE_4B;
+                        size  == axi4_size_e'(AXI4_MAX_SIZE);
                         burst == AXI4_BURST_INCR;
                         lock  == AXI4_LOCK_NORMAL;
                     }) `uvm_fatal(get_type_name(),

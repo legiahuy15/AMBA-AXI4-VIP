@@ -6,10 +6,14 @@
 //               Generates transactions where transfer size (AxSIZE) is smaller
 //               than the data bus width - known as "narrow transfers" in AXI4.
 //               Only 4 transactions: 1B-write, 1B-read, 2B-write, 2B-read
-//               on a 32-bit (4B) bus.
+//               on every compiled bus width. At widths above 32 bits these
+//               remain intentionally narrow protocol transfers.
 //               Ideal for waveform capture showing partial byte-lane usage.
 //               This file is `included inside axi4_pkg.sv.
 //==============================================================================
+
+// Huy Le: original 1-byte and 2-byte narrow-transfer teaching sequence.
+// Hoang Ho: comments and shared lane checking are width-independent.
 
 `ifndef AXI4_NARROW_BURST_SEQ_INCLUDED_
 `define AXI4_NARROW_BURST_SEQ_INCLUDED_
@@ -36,7 +40,7 @@ class axi4_narrow_burst_seq extends axi4_base_sequence;
                   UVM_MEDIUM)
 
         // -----------------------------------------------------------------
-        // Transaction 1: 1-byte WRITE (SIZE=1B on 32-bit bus)
+        // Transaction 1: 1-byte WRITE (narrow on every supported bus)
         //   Each beat transfers only 1 byte. On waveform WSTRB shows
         //   only one active byte lane per beat, rotating through lanes.
         // -----------------------------------------------------------------
@@ -51,7 +55,7 @@ class axi4_narrow_burst_seq extends axi4_base_sequence;
             id    == 4'h4;
         }) `uvm_fatal(get_type_name(), "Randomization failed for 1B narrow write")
         finish_item(tr);
-        wait (tr.completed); //Hoang Ho - persistent completion wait
+        wait (tr.completed); //Hoang Ho: persistent completion wait
 
         `uvm_info(get_type_name(),
                   $sformatf("TX1 [1B-WRITE] done: ADDR=0x%08h LEN=%0d",
@@ -73,16 +77,16 @@ class axi4_narrow_burst_seq extends axi4_base_sequence;
             id    == 4'h4;
         }) `uvm_fatal(get_type_name(), "Randomization failed for 1B narrow read")
         finish_item(tr);
-        wait (tr.completed); //Hoang Ho - persistent completion wait
+        wait (tr.completed); //Hoang Ho: persistent completion wait
 
         `uvm_info(get_type_name(),
                   $sformatf("TX2 [1B-READ] done: ADDR=0x%08h LEN=%0d",
                             tr.addr, tr.len), UVM_MEDIUM)
 
         // -----------------------------------------------------------------
-        // Transaction 3: 2-byte WRITE (SIZE=2B on 32-bit bus)
+        // Transaction 3: 2-byte WRITE (narrow on every supported bus)
         //   Each beat transfers a half-word. WSTRB alternates between
-        //   lower half-word (2'b0011) and upper half-word (2'b1100).
+        //   legal lanes advance according to address and compiled bus width.
         // -----------------------------------------------------------------
         tr = axi4_transaction::type_id::create("narrow_2b_wr_tr");
         start_item(tr);
@@ -95,7 +99,7 @@ class axi4_narrow_burst_seq extends axi4_base_sequence;
             id    == 4'h5;
         }) `uvm_fatal(get_type_name(), "Randomization failed for 2B narrow write")
         finish_item(tr);
-        wait (tr.completed); //Hoang Ho - persistent completion wait
+        wait (tr.completed); //Hoang Ho: persistent completion wait
 
         `uvm_info(get_type_name(),
                   $sformatf("TX3 [2B-WRITE] done: ADDR=0x%08h LEN=%0d",
@@ -116,7 +120,7 @@ class axi4_narrow_burst_seq extends axi4_base_sequence;
             id    == 4'h5;
         }) `uvm_fatal(get_type_name(), "Randomization failed for 2B narrow read")
         finish_item(tr);
-        wait (tr.completed); //Hoang Ho - persistent completion wait
+        wait (tr.completed); //Hoang Ho: persistent completion wait
 
         `uvm_info(get_type_name(),
                   $sformatf("TX4 [2B-READ] done: ADDR=0x%08h LEN=%0d",

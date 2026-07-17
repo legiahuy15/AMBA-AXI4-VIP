@@ -69,12 +69,11 @@ class axi4_master_agent extends uvm_agent;
         // Driver + Sequencer (ACTIVE mode only)
         if (cfg.is_active == UVM_ACTIVE) begin
             uvm_config_db#(virtual axi4_if)::set(this, "drv", "vif", vif);
-            //Hoang Ho - BEGIN: pass BREADY/RREADY backpressure config from agent to driver
+            //Hoang Ho: pass BREADY/RREADY backpressure config from agent to driver
             uvm_config_db#(int unsigned)::set(this, "drv", "bready_delay_min", cfg.bready_delay_min);
             uvm_config_db#(int unsigned)::set(this, "drv", "bready_delay_max", cfg.bready_delay_max);
             uvm_config_db#(int unsigned)::set(this, "drv", "rready_delay_min", cfg.rready_delay_min);
             uvm_config_db#(int unsigned)::set(this, "drv", "rready_delay_max", cfg.rready_delay_max);
-            //Hoang Ho - END: pass BREADY/RREADY backpressure config from agent to driver
             drv = axi4_master_driver::type_id::create("drv", this);
             sqr = axi4_master_sequencer::type_id::create("sqr", this);
             `uvm_info(get_type_name(), "ACTIVE mode - driver + sequencer created", UVM_MEDIUM)

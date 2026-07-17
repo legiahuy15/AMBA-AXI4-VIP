@@ -75,7 +75,7 @@ class axi4_random_seq extends axi4_base_sequence;
             // Optional serialization knob for tests that need one transaction
             // to finish on the bus before issuing the next transaction.
             if (wait_each_txn_done)
-                wait (tr.completed); //Hoang Ho - persistent completion wait
+                wait (tr.completed); //Hoang Ho: persistent completion wait
             //Hoang Ho
 
             `uvm_info(get_type_name(),

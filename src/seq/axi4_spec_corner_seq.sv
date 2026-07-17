@@ -1,4 +1,4 @@
-//Hoang Ho - New file: directed AXI4 functional corner sequence
+// Hoang Ho: New file: directed AXI4 functional corner sequence
 //==============================================================================
 // File        : axi4_spec_corner_seq.sv
 // Project     : AXI4 VIP
@@ -23,7 +23,7 @@ class axi4_spec_corner_seq extends axi4_base_sequence;
         super.new(name);
     endfunction : new
 
-    //Hoang Ho - Populate fields explicitly so the corner vectors stay stable
+    // Hoang Ho: Populate fields explicitly so the corner vectors stay stable
     // across random seeds and old simulators.
     protected function void init_common(
         axi4_transaction         tr,
@@ -51,7 +51,7 @@ class axi4_spec_corner_seq extends axi4_base_sequence;
         tr.completion_time = 0;
     endfunction : init_common
 
-    //Hoang Ho - Questa 10.6b compatibility: explicitly declare every
+    // Hoang Ho: Questa 10.6b compatibility: explicitly declare every
     // argument direction. In an ANSI task declaration, an omitted direction
     // inherits the previous formal direction. Because the first argument is
     // output, the old declaration accidentally made name_i..wait_done output.
@@ -63,7 +63,7 @@ class axi4_spec_corner_seq extends axi4_base_sequence;
         input  bit [7:0]           len_i,
         input  axi4_size_e         size_i,
         input  axi4_burst_type_e   burst_i,
-        input  bit [31:0]          data_seed,
+        input  bit [31:0]          legacy_word,
         input  bit                 wait_done = 1'b1
     );
         tr = axi4_transaction::type_id::create(name_i);
@@ -73,7 +73,7 @@ class axi4_spec_corner_seq extends axi4_base_sequence;
         tr.rresp = new[0];
 
         for (int beat = 0; beat <= len_i; beat++) begin
-            tr.data[beat] = data_seed + (32'h0101_0101 * beat);
+            tr.data[beat] = axi4_expand_legacy_word(legacy_word, beat);
             tr.strb[beat] = axi4_calc_legal_lane_mask(addr_i, beat, size_i,
                                                       burst_i, len_i);
         end
@@ -84,7 +84,7 @@ class axi4_spec_corner_seq extends axi4_base_sequence;
             wait (tr.completed);
     endtask : issue_write
 
-    //Hoang Ho - Explicit input directions prevent the output direction of tr
+    // Hoang Ho: Explicit input directions prevent the output direction of tr
     // from propagating to the remaining formals on older Questa versions.
     protected task issue_read(
         output axi4_transaction    tr,
@@ -117,12 +117,12 @@ class axi4_spec_corner_seq extends axi4_base_sequence;
         bit [7:0]                 len_i,
         axi4_size_e               size_i,
         axi4_burst_type_e         burst_i,
-        bit [31:0]                data_seed
+        bit [31:0]               legacy_word
     );
         axi4_transaction wr;
         axi4_transaction rd;
         issue_write(wr, {tag, "_wr"}, id_i, addr_i, len_i,
-                    size_i, burst_i, data_seed, 1'b1);
+                    size_i, burst_i, legacy_word, 1'b1);
         issue_read(rd, {tag, "_rd"}, id_i, addr_i, len_i,
                    size_i, burst_i, 1'b1);
     endtask : write_then_read
@@ -135,8 +135,9 @@ class axi4_spec_corner_seq extends axi4_base_sequence;
 
         `uvm_info(get_type_name(), "Starting Hoang Ho AXI4 spec-corner sequence", UVM_LOW)
 
-        // Full-width 4-byte transfer starting at byte lane 1. First-beat legal
-        // mask is 4'b1110, not 4'b1111 and never wraps to lane 0.
+        // A 4-byte transfer starts at byte lane 1. On the 32-bit baseline,
+        // the first mask is 4'b1110. Wider buses use the same AXI lane rule
+        // without treating this intentionally narrow vector as full-width.
         write_then_read("unaligned_full", 4'h1, 32'h0000_1001,
                         8'd3, AXI4_SIZE_4B, AXI4_BURST_INCR, 32'h1100_0000);
 

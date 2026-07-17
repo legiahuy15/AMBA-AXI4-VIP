@@ -75,10 +75,10 @@ class axi4_out_of_order_seq extends axi4_base_sequence;
                             finish_item(wr_tr);
 
                             // Wait for response
-                            wait (wr_tr.completed); //Hoang Ho - persistent completion wait
+                            wait (wr_tr.completed); //Hoang Ho: persistent completion wait
 
                             `uvm_info(get_type_name(),
-                                      $sformatf("OOO Write [#%0d] complete: ID=0x%0h RESP=%s", 
+                                      $sformatf("OOO Write [#%0d] complete: ID=0x%0h RESP=%s",
                                                 idx, wr_tr.id, wr_tr.resp.name()),
                                       UVM_HIGH)
                             sem_write.put(1);
@@ -114,7 +114,7 @@ class axi4_out_of_order_seq extends axi4_base_sequence;
                             finish_item(rd_tr);
 
                             // Wait for response (entire burst)
-                            wait (rd_tr.completed); //Hoang Ho - persistent completion wait
+                            wait (rd_tr.completed); //Hoang Ho: persistent completion wait
 
                             `uvm_info(get_type_name(),
                                       $sformatf("OOO Read [#%0d] complete: ID=0x%0h", idx, rd_tr.id),

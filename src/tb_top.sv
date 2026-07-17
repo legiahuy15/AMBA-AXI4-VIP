@@ -10,6 +10,7 @@
 
 `timescale 1ns/1ps
 
+//Huy Le: original architecture and baseline implementation.
 module tb_top;
 
     // =========================================================================
@@ -25,9 +26,25 @@ module tb_top;
     // =========================================================================
     // Parameters (Match standard values used across agents & tests)
     // =========================================================================
-    parameter ADDR_WIDTH = 32;
-    parameter DATA_WIDTH = 32;
-    parameter ID_WIDTH   = 4;
+    //Hoang Ho: these values are compiled consistently across the whole VIP.
+    localparam int ADDR_WIDTH = AXI4_ADDR_WIDTH;
+    localparam int DATA_WIDTH = AXI4_DATA_WIDTH;
+    localparam int ID_WIDTH   = AXI4_ID_WIDTH;
+
+
+    //Hoang Ho: fail early when an unsupported external configuration is used.
+    initial begin
+        if (!axi4_supported_data_width())
+            $fatal(1, "Unsupported AXI4 DATA_WIDTH=%0d. Supported external profiles: 32/64/128/256/512/1024.", DATA_WIDTH);
+        if ((DATA_WIDTH % 8) != 0 || ((DATA_WIDTH & (DATA_WIDTH-1)) != 0))
+            $fatal(1, "DATA_WIDTH must be a power-of-two number of bits and divisible by 8.");
+        if (ADDR_WIDTH < 12)
+            $fatal(1, "ADDR_WIDTH must be at least 12 for AXI4 4KB-boundary checking.");
+        if (ID_WIDTH < 1)
+            $fatal(1, "ID_WIDTH must be at least 1.");
+        $display("[AXI4-CONFIG] ADDR=%0d DATA=%0d ID=%0d STRB=%0d MAX_SIZE=%0d",
+                 ADDR_WIDTH, DATA_WIDTH, ID_WIDTH, AXI4_STRB_WIDTH, AXI4_MAX_SIZE);
+    end
 
     // =========================================================================
     // Clock and Reset Generation
@@ -154,11 +171,19 @@ module tb_top;
     // Simulation Control & Waveform Dumping
     // =========================================================================
     initial begin
-        // Enable waveform dumping if requested by +DUMP_VCD plusarg
+        string vcd_file;
+
+        // Huy Le: +DUMP_VCD enables waveform dumping for learning/debug.
+        // Hoang Ho: +VCD_FILE=<path> gives every run a unique waveform name,
+        // so selected-width runs do not overwrite another test waveform.
         if ($test$plusargs("DUMP_VCD")) begin
-            $dumpfile("axi4_vip.vcd");
+            if (!$value$plusargs("VCD_FILE=%s", vcd_file))
+                vcd_file = "axi4_vip.vcd";
+            $dumpfile(vcd_file);
             $dumpvars(0, tb_top);
-            `uvm_info("TB_TOP", "Waveform VCD dumping enabled (axi4_vip.vcd)", UVM_LOW)
+            `uvm_info("TB_TOP",
+                      $sformatf("Waveform VCD dumping enabled (%s)", vcd_file),
+                      UVM_LOW)
         end
     end
 

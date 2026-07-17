@@ -66,7 +66,7 @@ class axi4_addr_data_integrity_seq extends axi4_base_sequence;
         endcase
     endfunction : ref_beat_addr
 
-    //Hoang Ho - BEGIN: independent Arm byte-lane reference for unaligned reads
+    //Hoang Ho: independent Arm byte-lane reference for unaligned reads
     // The first unaligned transfer must not wrap bytes past the current data-bus
     // word back into lane 0. Example for a 32-bit bus, ADDR=0x4002, SIZE=4B:
     // legal first-beat lanes are 2 and 3, so expected RDATA is 0x0302_0000.
@@ -107,7 +107,6 @@ class axi4_addr_data_integrity_seq extends axi4_base_sequence;
 
         return d;
     endfunction : ref_beat_data
-    //Hoang Ho - END
 
     // =========================================================================
     // seed_memory - trusted INCR write so mem[BASE+k] == (BASE+k)[7:0].
@@ -120,22 +119,22 @@ class axi4_addr_data_integrity_seq extends axi4_base_sequence;
         tr.dir   = AXI4_WRITE;
         tr.id    = 4'h1;
         tr.addr  = BASE;
-        tr.size  = AXI4_SIZE_4B;
+        tr.size  = axi4_full_bus_size();
         tr.burst = AXI4_BURST_INCR;
-        tr.len   = 63;
+        tr.len   = (256 / AXI4_STRB_WIDTH) - 1;
         tr.lock  = AXI4_LOCK_NORMAL;
-        tr.data  = new[64];
-        tr.strb  = new[64];
-        tr.rresp = new[64];
-        for (int i = 0; i < 64; i++) begin
+        tr.data  = new[tr.len + 1];
+        tr.strb  = new[tr.len + 1];
+        tr.rresp = new[tr.len + 1];
+        for (int i = 0; i <= tr.len; i++) begin
             tr.data[i] = '0;
-            for (int j = 0; j < 4; j++)
-                tr.data[i][j*8 +: 8] = (BASE + i*4 + j);   // = (i*4+j) since BASE%256==0
-            tr.strb[i] = '1;                               // full byte-enables
+            for (int lane = 0; lane < AXI4_STRB_WIDTH; lane++)
+                tr.data[i][lane*8 +: 8] = byte'(BASE + i*AXI4_STRB_WIDTH + lane);
+            tr.strb[i] = '1;
         end
         start_item(tr);
         finish_item(tr);
-        wait (tr.completed); //Hoang Ho - persistent completion wait
+        wait (tr.completed); //Hoang Ho: persistent completion wait
         `uvm_info(get_type_name(),
                   $sformatf("Seeded 256 bytes at 0x%08h (mem[A]=A[7:0]) RESP=%s",
                             BASE, tr.resp.name()), UVM_MEDIUM)
@@ -166,11 +165,11 @@ class axi4_addr_data_integrity_seq extends axi4_base_sequence;
 
         start_item(tr);
         finish_item(tr);
-        wait (tr.completed); //Hoang Ho - persistent completion wait
+        wait (tr.completed); //Hoang Ho: persistent completion wait
 
         for (int b = 0; b <= len; b++) begin
             bit [AXI4_ADDR_WIDTH-1:0] ba  = ref_beat_addr(addr, b, num_bytes, burst, len);
-            //Hoang Ho - use start address and beat index for the independent first-beat rule
+            //Hoang Ho: use start address and beat index for the independent first-beat rule
             bit [AXI4_DATA_WIDTH-1:0] exp =
                 ref_beat_data(addr, b, num_bytes, burst, len);
             if (tr.data[b] !== exp) begin

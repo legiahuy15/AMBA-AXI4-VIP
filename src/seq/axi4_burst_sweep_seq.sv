@@ -1,12 +1,12 @@
 //==============================================================================
 // File        : axi4_burst_sweep_seq.sv
 // Project     : AXI4 VIP
-// Author      : Antigravity
-// Description : AXI4 Burst Type, Size, and Length Sweep Sequence.
-//               Systematically generates transactions to cover all legal
-//               combinations of burst type, transfer size, and burst length,
-//               ensuring 100% cross coverage of cx_burst_len and cx_burst_size.
-//               This file is `included inside axi4_pkg.sv.
+// Author      : Huy Le
+// Description : Burst type, size, and length sweep.
+//               Hoang Ho generalized the size loop to every transfer size that
+//               is legal for the compiled 32..1024-bit data bus. INCR vectors
+//               that cannot fit inside one 4KB page are skipped as required by
+//               AXI4 rather than treated as missing legal combinations.
 //==============================================================================
 
 `ifndef AXI4_BURST_SWEEP_SEQ_INCLUDED_
@@ -16,161 +16,114 @@ class axi4_burst_sweep_seq extends axi4_base_sequence;
 
     `uvm_object_utils(axi4_burst_sweep_seq)
 
-    // =========================================================================
-    // Constructor
-    // =========================================================================
     function new(string name = "axi4_burst_sweep_seq");
         super.new(name);
     endfunction : new
 
-    // =========================================================================
-    // Body task
-    // =========================================================================
-    virtual task body();
+    protected task send_sweep_tx(
+        input string             name_i,
+        input axi4_dir_e         dir_i,
+        input axi4_burst_type_e  burst_i,
+        input axi4_size_e        size_i,
+        input bit [7:0]          len_i,
+        input bit                error_region,
+        input bit                decode_error
+    );
         axi4_transaction tr;
-        int count = 0;
-        int fixed_lens[5] = '{0, 1, 2, 3, 4};
-        int wrap_lens[4]  = '{0, 1, 2, 3};
-        int incr_lens[6]  = '{0, 1, 2, 3, 4, 5};
-        int sizes[3]      = '{0, 1, 2};
-        int err_types[2]  = '{0, 1};
+        axi4_addr_t forced_addr;
 
-        `uvm_info(get_type_name(), "Starting burst type, size, and length sweep sequence", UVM_MEDIUM)
+        if (error_region)
+            forced_addr = decode_error ? axi4_addr_t'(32'hF000_0000)
+                                       : axi4_addr_t'(32'hE000_0000);
+        else
+            forced_addr = '0;
 
-        // 1. FIXED bursts (lengths 0, 1, 3, 7, 15; sizes 1B, 2B, 4B)
-        foreach (fixed_lens[l]) begin
-            bit [7:0] len_val;
-            case (l)
-                0: len_val = 0;   // 1 beat
-                1: len_val = 1;   // 2 beats
-                2: len_val = 3;   // 4 beats
-                3: len_val = 7;   // 8 beats
-                4: len_val = 15;  // 16 beats
-            endcase
+        tr = axi4_transaction::type_id::create(name_i);
+        start_item(tr);
+        if (!tr.randomize() with {
+            dir   == dir_i;
+            id    inside {[id_lo : id_hi]};
+            burst == burst_i;
+            size  == size_i;
+            len   == len_i;
+            if (error_region)
+                addr == forced_addr;
+            else {
+                addr inside {[addr_lo : addr_hi]};
+                addr < 32'hE000_0000;
+            }
+        }) `uvm_fatal(get_type_name(), $sformatf("Randomization failed for %s", name_i))
+        finish_item(tr);
+    endtask : send_sweep_tx
 
-            foreach (sizes[s]) begin
+    virtual task body();
+        int unsigned count;
+        bit [7:0] fixed_len_values[5] = '{0, 1, 3, 7, 15};
+        bit [7:0] wrap_len_values[4]  = '{1, 3, 7, 15};
+        bit [7:0] incr_len_values[6]  = '{0, 2, 10, 32, 100, 255};
+
+        count = 0;
+        `uvm_info(get_type_name(),
+                  $sformatf("Starting burst sweep: SIZE=0..%0d for DATA_WIDTH=%0d",
+                            AXI4_MAX_SIZE, AXI4_DATA_WIDTH), UVM_MEDIUM)
+
+        // FIXED: every legal size, lengths up to 16 beats.
+        foreach (fixed_len_values[l]) begin
+            for (int unsigned s = 0; s <= AXI4_MAX_SIZE; s++) begin
                 axi4_size_e size_val;
-                case (s)
-                    0: size_val = AXI4_SIZE_1B;
-                    1: size_val = AXI4_SIZE_2B;
-                    2: size_val = AXI4_SIZE_4B;
-                endcase
+                size_val = axi4_size_e'(s);
+                send_sweep_tx($sformatf("fixed_wr_%0d", count++), AXI4_WRITE,
+                              AXI4_BURST_FIXED, size_val, fixed_len_values[l], 0, 0);
+                send_sweep_tx($sformatf("fixed_rd_%0d", count++), AXI4_READ,
+                              AXI4_BURST_FIXED, size_val, fixed_len_values[l], 0, 0);
+            end
+        end
 
-                // Perform a write and a read
-                repeat (2) begin
-                    bit is_write = (count % 2 == 0);
-                    tr = axi4_transaction::type_id::create($sformatf("fixed_sweep_%0d", count++));
-                    start_item(tr);
-                    if (!tr.randomize() with {
-                        dir   == (is_write ? AXI4_WRITE : AXI4_READ);
-                        addr  inside {[addr_lo : addr_hi]};
-                        addr  < 32'hE000_0000;
-                        id    inside {[id_lo   : id_hi]};
-                        burst == AXI4_BURST_FIXED;
-                        size  == size_val;
-                        len   == len_val;
-                    }) `uvm_fatal(get_type_name(), "Randomization failed during FIXED sweep")
-                    finish_item(tr);
+        // WRAP: legal lengths are 2/4/8/16 beats; the maximum legal container
+        // is 16*128=2048 bytes, so every supported size remains inside 4KB.
+        foreach (wrap_len_values[l]) begin
+            for (int unsigned s = 0; s <= AXI4_MAX_SIZE; s++) begin
+                axi4_size_e size_val;
+                size_val = axi4_size_e'(s);
+                send_sweep_tx($sformatf("wrap_wr_%0d", count++), AXI4_WRITE,
+                              AXI4_BURST_WRAP, size_val, wrap_len_values[l], 0, 0);
+                send_sweep_tx($sformatf("wrap_rd_%0d", count++), AXI4_READ,
+                              AXI4_BURST_WRAP, size_val, wrap_len_values[l], 0, 0);
+            end
+        end
+
+        // INCR: include each length-bin representative only when its transfer
+        // container fits in one 4KB page for the current size.
+        foreach (incr_len_values[l]) begin
+            for (int unsigned s = 0; s <= AXI4_MAX_SIZE; s++) begin
+                int unsigned bytes_per_beat;
+                int unsigned total_bytes;
+                axi4_size_e size_val;
+                size_val      = axi4_size_e'(s);
+                bytes_per_beat = 1 << s;
+                total_bytes    = bytes_per_beat * (incr_len_values[l] + 1);
+                if (total_bytes <= 4096) begin
+                    send_sweep_tx($sformatf("incr_wr_%0d", count++), AXI4_WRITE,
+                                  AXI4_BURST_INCR, size_val, incr_len_values[l], 0, 0);
+                    send_sweep_tx($sformatf("incr_rd_%0d", count++), AXI4_READ,
+                                  AXI4_BURST_INCR, size_val, incr_len_values[l], 0, 0);
                 end
             end
         end
 
-        // 2. WRAP bursts (lengths 1, 3, 7, 15; sizes 1B, 2B, 4B)
-        foreach (wrap_lens[l]) begin
-            bit [7:0] len_val;
-            case (l)
-                0: len_val = 1;   // 2 beats
-                1: len_val = 3;   // 4 beats
-                2: len_val = 7;   // 8 beats
-                3: len_val = 15;  // 16 beats
-            endcase
+        // Error responses are orthogonal to width. Use one full-width beat so
+        // every configured profile also exercises SLVERR and DECERR paths.
+        send_sweep_tx($sformatf("slverr_wr_%0d", count++), AXI4_WRITE,
+                      AXI4_BURST_INCR, axi4_size_e'(AXI4_MAX_SIZE), 0, 1, 0);
+        send_sweep_tx($sformatf("slverr_rd_%0d", count++), AXI4_READ,
+                      AXI4_BURST_INCR, axi4_size_e'(AXI4_MAX_SIZE), 0, 1, 0);
+        send_sweep_tx($sformatf("decerr_wr_%0d", count++), AXI4_WRITE,
+                      AXI4_BURST_INCR, axi4_size_e'(AXI4_MAX_SIZE), 0, 1, 1);
+        send_sweep_tx($sformatf("decerr_rd_%0d", count++), AXI4_READ,
+                      AXI4_BURST_INCR, axi4_size_e'(AXI4_MAX_SIZE), 0, 1, 1);
 
-            foreach (sizes[s]) begin
-                axi4_size_e size_val;
-                case (s)
-                    0: size_val = AXI4_SIZE_1B;
-                    1: size_val = AXI4_SIZE_2B;
-                    2: size_val = AXI4_SIZE_4B;
-                endcase
-
-                repeat (2) begin
-                    bit is_write = (count % 2 == 0);
-                    tr = axi4_transaction::type_id::create($sformatf("wrap_sweep_%0d", count++));
-                    start_item(tr);
-                    if (!tr.randomize() with {
-                        dir   == (is_write ? AXI4_WRITE : AXI4_READ);
-                        addr  inside {[addr_lo : addr_hi]};
-                        addr  < 32'hE000_0000;
-                        id    inside {[id_lo   : id_hi]};
-                        burst == AXI4_BURST_WRAP;
-                        size  == size_val;
-                        len   == len_val;
-                    }) `uvm_fatal(get_type_name(), "Randomization failed during WRAP sweep")
-                    finish_item(tr);
-                end
-            end
-        end
-
-        // 3. INCR bursts (sweep all length bins: 0, [1:3], [4:15], [16:63], [64:254], 255; sizes 1B, 2B, 4B)
-        foreach (incr_lens[l]) begin
-            bit [7:0] len_val;
-            case (l)
-                0: len_val = 0;   // single beat
-                1: len_val = 2;   // short_b
-                2: len_val = 10;  // medium_b
-                3: len_val = 32;  // long_b
-                4: len_val = 100; // very_long
-                5: len_val = 255; // max_b
-            endcase
-
-            foreach (sizes[s]) begin
-                axi4_size_e size_val;
-                case (s)
-                    0: size_val = AXI4_SIZE_1B;
-                    1: size_val = AXI4_SIZE_2B;
-                    2: size_val = AXI4_SIZE_4B;
-                endcase
-
-                repeat (2) begin
-                    bit is_write = (count % 2 == 0);
-                    tr = axi4_transaction::type_id::create($sformatf("incr_sweep_%0d", count++));
-                    start_item(tr);
-                    if (!tr.randomize() with {
-                        dir   == (is_write ? AXI4_WRITE : AXI4_READ);
-                        addr  inside {[addr_lo : addr_hi]};
-                        addr  < 32'hE000_0000;
-                        id    inside {[id_lo   : id_hi]};
-                        burst == AXI4_BURST_INCR;
-                        size  == size_val;
-                        len   == len_val;
-                    }) `uvm_fatal(get_type_name(), "Randomization failed during INCR sweep")
-                    finish_item(tr);
-                end
-            end
-        end
-
-        // 4. Inject Error Regions to hit SLVERR and DECERR coverpoints
-        // SLVERR region is [32'hE000_0000 : 32'hEFFF_FFFF]
-        // DECERR region is [32'hF000_0000 : 32'hFFFF_FFFF]
-        foreach (err_types[e]) begin
-            bit [AXI4_ADDR_WIDTH-1:0] err_addr = (e == 0) ? 32'hE000_0000 : 32'hF000_0000;
-            repeat (2) begin
-                bit is_write = (count % 2 == 0);
-                tr = axi4_transaction::type_id::create($sformatf("err_inject_%0d", count++));
-                start_item(tr);
-                if (!tr.randomize() with {
-                    dir   == (is_write ? AXI4_WRITE : AXI4_READ);
-                    addr  == err_addr;
-                    id    inside {[id_lo   : id_hi]};
-                    burst == AXI4_BURST_INCR;
-                    size  == AXI4_SIZE_4B;
-                    len   == 0; // 1 beat
-                }) `uvm_fatal(get_type_name(), "Randomization failed during error injection sweep")
-                finish_item(tr);
-            end
-        end
-
-        `uvm_info(get_type_name(), $sformatf("Burst sweep sequence complete: sent %0d transactions", count), UVM_MEDIUM)
+        `uvm_info(get_type_name(),
+                  $sformatf("Burst sweep complete: %0d transactions", count), UVM_MEDIUM)
     endtask : body
 
 endclass : axi4_burst_sweep_seq

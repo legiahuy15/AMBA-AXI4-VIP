@@ -55,7 +55,7 @@ class axi4_error_response_seq extends axi4_base_sequence;
             id    == 4'h0;
         }) `uvm_fatal(get_type_name(), "Randomization failed for OKAY write")
         finish_item(tr);
-        wait (tr.completed); //Hoang Ho - persistent completion wait
+        wait (tr.completed); //Hoang Ho: persistent completion wait
         `uvm_info(get_type_name(),
                   $sformatf("TX1 [OKAY-WR] ADDR=0x%08h BRESP=%s",
                             tr.addr, tr.resp.name()), UVM_MEDIUM)
@@ -72,7 +72,7 @@ class axi4_error_response_seq extends axi4_base_sequence;
             id    == 4'h0;
         }) `uvm_fatal(get_type_name(), "Randomization failed for OKAY read")
         finish_item(tr);
-        wait (tr.completed); //Hoang Ho - persistent completion wait
+        wait (tr.completed); //Hoang Ho: persistent completion wait
         `uvm_info(get_type_name(),
                   $sformatf("TX2 [OKAY-RD] ADDR=0x%08h RRESP=%s",
                             tr.addr, tr.rresp[0].name()), UVM_MEDIUM)
@@ -92,7 +92,7 @@ class axi4_error_response_seq extends axi4_base_sequence;
             id    == 4'hA;
         }) `uvm_fatal(get_type_name(), "Randomization failed for SLVERR write")
         finish_item(tr);
-        wait (tr.completed); //Hoang Ho - persistent completion wait
+        wait (tr.completed); //Hoang Ho: persistent completion wait
         `uvm_info(get_type_name(),
                   $sformatf("TX3 [SLVERR-WR] ADDR=0x%08h BRESP=%s",
                             tr.addr, tr.resp.name()), UVM_MEDIUM)
@@ -109,7 +109,7 @@ class axi4_error_response_seq extends axi4_base_sequence;
             id    == 4'hA;
         }) `uvm_fatal(get_type_name(), "Randomization failed for SLVERR read")
         finish_item(tr);
-        wait (tr.completed); //Hoang Ho - persistent completion wait
+        wait (tr.completed); //Hoang Ho: persistent completion wait
         `uvm_info(get_type_name(),
                   $sformatf("TX4 [SLVERR-RD] ADDR=0x%08h RRESP=%s",
                             tr.addr, tr.rresp[0].name()), UVM_MEDIUM)
@@ -129,7 +129,7 @@ class axi4_error_response_seq extends axi4_base_sequence;
             id    == 4'hF;
         }) `uvm_fatal(get_type_name(), "Randomization failed for DECERR write")
         finish_item(tr);
-        wait (tr.completed); //Hoang Ho - persistent completion wait
+        wait (tr.completed); //Hoang Ho: persistent completion wait
         `uvm_info(get_type_name(),
                   $sformatf("TX5 [DECERR-WR] ADDR=0x%08h BRESP=%s",
                             tr.addr, tr.resp.name()), UVM_MEDIUM)
@@ -146,7 +146,7 @@ class axi4_error_response_seq extends axi4_base_sequence;
             id    == 4'hF;
         }) `uvm_fatal(get_type_name(), "Randomization failed for DECERR read")
         finish_item(tr);
-        wait (tr.completed); //Hoang Ho - persistent completion wait
+        wait (tr.completed); //Hoang Ho: persistent completion wait
         `uvm_info(get_type_name(),
                   $sformatf("TX6 [DECERR-RD] ADDR=0x%08h RRESP=%s",
                             tr.addr, tr.rresp[0].name()), UVM_MEDIUM)

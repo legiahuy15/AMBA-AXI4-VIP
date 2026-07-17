@@ -15,6 +15,7 @@
 //               This file is `included inside axi4_pkg.sv.
 //==============================================================================
 
+//Huy Le: original architecture and baseline implementation.
 class axi4_master_driver extends uvm_driver #(axi4_transaction);
 
     `uvm_component_utils(axi4_master_driver)
@@ -31,11 +32,10 @@ class axi4_master_driver extends uvm_driver #(axi4_transaction);
     protected axi4_transaction pending_b_tr[bit[AXI4_ID_WIDTH-1:0]][$];
     protected axi4_transaction pending_r_tr[bit[AXI4_ID_WIDTH-1:0]][$];
 
-    //Hoang Ho - BEGIN: beat-level read response tracking by transaction
+    //Hoang Ho: beat-level read response tracking by transaction
     // Allows legal R-channel interleaving between different RID values while
     // preserving request order for transactions that use the same ID.
     protected int unsigned pending_r_beat[axi4_transaction];
-    //Hoang Ho - END: beat-level read response tracking by transaction
 
     // Inter-channel synchronization flags for wr_order constraints
     protected bit aw_done[axi4_transaction];
@@ -142,7 +142,7 @@ class axi4_master_driver extends uvm_driver #(axi4_transaction);
         ar_drive_queue.delete();
         pending_b_tr.delete();
         pending_r_tr.delete();
-        //Hoang Ho - reset read beat state together with outstanding requests
+        //Hoang Ho: reset read beat state together with outstanding requests
         pending_r_beat.delete();
         aw_done.delete();
         w_started.delete();
@@ -249,7 +249,7 @@ class axi4_master_driver extends uvm_driver #(axi4_transaction);
     // W Channel - Write Data phase
     // =========================================================================
     task drive_w_channel(axi4_transaction tr);
-        //Hoang Ho - BEGIN: continuous-WREADY-safe write-data driver
+        //Hoang Ho: continuous-WREADY-safe write-data driver
         // Present the first beat once, then update the payload immediately after
         // each handshake. There is no extra idle clock while WVALID remains high,
         // so a subordinate that keeps WREADY asserted cannot accept a beat twice.
@@ -267,7 +267,6 @@ class axi4_master_driver extends uvm_driver #(axi4_transaction);
 
         vif.master_cb.WVALID <= 1'b0;
         vif.master_cb.WLAST  <= 1'b0;
-        //Hoang Ho - END: continuous-WREADY-safe write-data driver
     endtask : drive_w_channel
 
     // =========================================================================
@@ -295,7 +294,7 @@ class axi4_master_driver extends uvm_driver #(axi4_transaction);
         vif.master_cb.ARVALID <= 1'b0;
     endtask : drive_ar_channel
 
-    //Hoang Ho - BEGIN: Master-side B/R response backpressure helper tasks
+    //Hoang Ho: Master-side B/R response backpressure helper tasks
     // =========================================================================
     // Response READY delay helpers
     // =========================================================================
@@ -346,7 +345,6 @@ class axi4_master_driver extends uvm_driver #(axi4_transaction);
         rlast = vif.master_cb.RLAST;
         vif.master_cb.RREADY <= 1'b0;
     endtask : wait_r_handshake
-    //Hoang Ho - END: Master-side B/R response backpressure helper tasks
 
     // =========================================================================
     // B Channel response receiver (kept active in parallel)
@@ -357,9 +355,8 @@ class axi4_master_driver extends uvm_driver #(axi4_transaction);
             bit [AXI4_ID_WIDTH-1:0] bid;
             axi4_resp_e             bresp;
 
-            //Hoang Ho - BEGIN: use backpressure-aware B handshake capture
+            //Hoang Ho: use backpressure-aware B handshake capture
             wait_b_handshake(bid, bresp);
-            //Hoang Ho - END: use backpressure-aware B handshake capture
 
             if (pending_b_tr.exists(bid) && pending_b_tr[bid].size() > 0) begin
                 axi4_transaction tr;
@@ -370,7 +367,7 @@ class axi4_master_driver extends uvm_driver #(axi4_transaction);
                 aw_done.delete(tr);
 
                 drop_driver_objection("Write response received");
-                //Hoang Ho - persistent completion state is safe even if a
+                //Hoang Ho: persistent completion state is safe even if a
                 // sequence starts waiting after the event pulse.
                 tr.completed       = 1'b1;
                 tr.completion_time = $time;
@@ -400,7 +397,7 @@ class axi4_master_driver extends uvm_driver #(axi4_transaction);
 
             wait_r_handshake(rid, rdata, rresp, rlast);
 
-            //Hoang Ho - BEGIN: RID-based beat dispatcher with legal interleaving
+            //Hoang Ho: RID-based beat dispatcher with legal interleaving
             if (pending_r_tr.exists(rid) && pending_r_tr[rid].size() > 0) begin
                 // Same-ID transactions remain ordered because only the front
                 // transaction for this RID can consume beats. Different RIDs can
@@ -430,7 +427,7 @@ class axi4_master_driver extends uvm_driver #(axi4_transaction);
                             pending_r_tr.delete(rid);
                         pending_r_beat.delete(tr);
                         drop_driver_objection("Read completed");
-                        //Hoang Ho - persistent completion state for read burst.
+                        //Hoang Ho: persistent completion state for read burst.
                         tr.completed       = 1'b1;
                         tr.completion_time = $time;
                         ->tr.done_event.ev;
@@ -445,7 +442,6 @@ class axi4_master_driver extends uvm_driver #(axi4_transaction);
                 `uvm_error(get_type_name(),
                            $sformatf("Master driver received unexpected R response RID=0x%0h", rid))
             end
-            //Hoang Ho - END: RID-based beat dispatcher with legal interleaving
         end
     endtask : receive_r_responses
 

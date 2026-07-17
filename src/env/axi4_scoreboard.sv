@@ -26,6 +26,7 @@
 `uvm_analysis_imp_decl(_master)
 `uvm_analysis_imp_decl(_slave)
 
+//Huy Le: original architecture and baseline implementation.
 class axi4_scoreboard extends uvm_scoreboard;
 
     `uvm_component_utils(axi4_scoreboard)
@@ -118,7 +119,7 @@ class axi4_scoreboard extends uvm_scoreboard;
             try_match(tr, slave_rd_q, master_rd_q, "READ");
     endfunction : write_slave
 
-    //Hoang Ho - BEGIN: Robust AXI4 Full transaction matching key
+    //Hoang Ho: Robust AXI4 Full transaction matching key
     // =========================================================================
     // is_same_txn_key - AXI4 transaction-level matching key
     //   Do not match only by (id, addr). AXI4 can have multiple outstanding
@@ -138,7 +139,6 @@ class axi4_scoreboard extends uvm_scoreboard;
                (a.prot   == b.prot)   &&
                (a.region == b.region);
     endfunction : is_same_txn_key
-    //Hoang Ho - END: Robust AXI4 Full transaction matching key
 
     // =========================================================================
     // try_match - search for matching transaction on the other side
@@ -152,20 +152,19 @@ class axi4_scoreboard extends uvm_scoreboard;
         input string         dir_str
     );
         for (int i = 0; i < other_q.size(); i++) begin
-            //Hoang Ho - BEGIN: replace old id+addr matching with full transaction key
+            //Hoang Ho: replace old id+addr matching with full transaction key
             if (is_same_txn_key(other_q[i], new_tr)) begin
                 axi4_transaction ref_tr = other_q[i];
                 other_q.delete(i);
                 compare_transactions(ref_tr, new_tr, dir_str);
                 return;
             end
-            //Hoang Ho - END: replace old id+addr matching with full transaction key
         end
 
         own_q.push_back(new_tr);
     endfunction : try_match
 
-    //Hoang Ho - BEGIN: shared, spec-correct address and lane wrappers
+    //Hoang Ho: shared, spec-correct address and lane wrappers
     function bit [AXI4_ADDR_WIDTH-1:0] calc_beat_addr(
         bit [AXI4_ADDR_WIDTH-1:0] start_addr,
         int unsigned              beat_idx,
@@ -187,7 +186,6 @@ class axi4_scoreboard extends uvm_scoreboard;
         return axi4_calc_legal_lane_mask(start_addr, beat_idx, size,
                                          axi4_burst_type_e'(burst_type), len);
     endfunction : calc_legal_wstrb_mask
-    //Hoang Ho - END: shared, spec-correct address and lane wrappers
 
     // =========================================================================
     // update_ref_mem - update scoreboard's reference memory on WRITES
@@ -195,7 +193,7 @@ class axi4_scoreboard extends uvm_scoreboard;
     function void update_ref_mem(axi4_transaction tr);
         bit do_write;
 
-        //Hoang Ho - BEGIN: response-driven reference-memory commit policy
+        //Hoang Ho: response-driven reference-memory commit policy
         // Normal successful writes and successful exclusive writes commit data.
         // SLVERR/DECERR and failed exclusive writes never modify memory.
         do_write = ((tr.lock == AXI4_LOCK_NORMAL)    &&
@@ -237,14 +235,13 @@ class axi4_scoreboard extends uvm_scoreboard;
                       $sformatf("[REF_MEM_WRITE_IGNORED] ADDR=0x%08h LOCK=%s RESP=%s",
                                 tr.addr, tr.lock.name(), tr.resp.name()), UVM_MEDIUM)
         end
-        //Hoang Ho - END: response-driven reference-memory commit policy
     endfunction : update_ref_mem
 
     // =========================================================================
     // check_ref_mem - verify READ transaction against reference memory
     // =========================================================================
     function void check_ref_mem(axi4_transaction tr);
-        //Hoang Ho - BEGIN: compare only bytes that belong to each AXI4 transfer
+        //Hoang Ho: compare only bytes that belong to each AXI4 transfer
         // Inactive lanes are not protocol data and are therefore ignored. Read
         // beats carrying SLVERR/DECERR are checked for response only, not RDATA.
         for (int beat = 0; beat <= tr.len; beat++) begin
@@ -281,7 +278,6 @@ class axi4_scoreboard extends uvm_scoreboard;
                 end
             end
         end
-        //Hoang Ho - END: compare only bytes that belong to each AXI4 transfer
     endfunction : check_ref_mem
 
     // =========================================================================
@@ -319,12 +315,11 @@ class axi4_scoreboard extends uvm_scoreboard;
     endfunction : compare_transactions
 
 
-    //Hoang Ho - BEGIN: completion helper used by drain-aware tests
+    //Hoang Ho: completion helper used by drain-aware tests
     function int unsigned pending_count();
         return master_wr_q.size() + master_rd_q.size() +
                slave_wr_q.size()  + slave_rd_q.size();
     endfunction : pending_count
-    //Hoang Ho - END: completion helper used by drain-aware tests
 
     // =========================================================================
     // check_phase - flag errors for unmatched/mismatched transactions
@@ -338,7 +333,7 @@ class axi4_scoreboard extends uvm_scoreboard;
             `uvm_error(get_type_name(),
                        $sformatf("%0d transaction MISMATCHES detected", mismatch_count))
 
-        //Hoang Ho - unmatched traffic is a functional failure, not a warning.
+        //Hoang Ho: unmatched traffic is a functional failure, not a warning.
         if (unmatched > 0)
             `uvm_error(get_type_name(),
                        $sformatf("%0d unmatched transactions at end of simulation",

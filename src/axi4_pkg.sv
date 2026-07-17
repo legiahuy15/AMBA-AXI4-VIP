@@ -31,6 +31,7 @@ package axi4_pkg;
     // Core Types & Transaction Objects  (src/cfg/)
     // =========================================================================
     `include "cfg/axi4_types.sv"
+    `include "cfg/axi4_read_context.sv" //Hoang Ho: beat-level R scheduler state
     `include "cfg/axi4_agent_config.sv"
     `include "cfg/axi4_transaction.sv"
 
@@ -76,10 +77,12 @@ package axi4_pkg;
     `include "seq/axi4_back_to_back_seq.sv"
     `include "seq/axi4_data_integrity_seq.sv"
     `include "seq/axi4_addr_data_integrity_seq.sv"
-    //Hoang Ho - BEGIN: include new 4KB boundary sequence
+    //Hoang Ho: include new 4KB boundary sequence
     `include "seq/axi4_4kb_boundary_seq.sv"
-    `include "seq/axi4_spec_corner_seq.sv" //Hoang Ho - new functional corner sequence
-    //Hoang Ho - END: include new spec-compliance sequences
+    `include "seq/axi4_spec_corner_seq.sv" //Hoang Ho
+    `include "seq/axi4_read_interleaving_seq.sv" //Hoang Ho
+    `include "seq/axi4_width_scaling_seq.sv" //Hoang Ho
+    //Hoang Ho: end of extension sequences
 
     // =========================================================================
     // Environment-level Components  (src/env/)

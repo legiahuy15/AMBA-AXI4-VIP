@@ -20,6 +20,7 @@
 //               This file is `included inside axi4_pkg.sv.
 //==============================================================================
 
+//Huy Le: original architecture and baseline implementation.
 class axi4_master_monitor extends uvm_monitor;
 
     `uvm_component_utils(axi4_master_monitor)
@@ -56,9 +57,8 @@ class axi4_master_monitor extends uvm_monitor;
     //   monitor_r_channel  : pending_r[RID] -> ap.write()
     axi4_transaction pending_r[bit[AXI4_ID_WIDTH-1:0]][$];
 
-    //Hoang Ho - BEGIN: beat index state for interleaved R responses
+    //Hoang Ho: beat index state for interleaved R responses
     protected int unsigned pending_r_beat[axi4_transaction];
-    //Hoang Ho - END: beat index state for interleaved R responses
 
     // =========================================================================
     // Constructor
@@ -273,7 +273,7 @@ class axi4_master_monitor extends uvm_monitor;
 
             rid = vif.monitor_cb.RID;
 
-            //Hoang Ho - BEGIN: reconstruct each R beat by RID
+            //Hoang Ho: reconstruct each R beat by RID
             // Different IDs may interleave. For one RID, the front pending AR
             // remains active until its RLAST, preserving same-ID ordering.
             if (!pending_r.exists(rid) || pending_r[rid].size() == 0) begin
@@ -315,7 +315,6 @@ class axi4_master_monitor extends uvm_monitor;
             end else begin
                 pending_r_beat[tr] = beat_idx + 1;
             end
-            //Hoang Ho - END: reconstruct each R beat by RID
         end
     endtask : monitor_r_channel
 
@@ -327,7 +326,7 @@ class axi4_master_monitor extends uvm_monitor;
         w_beat_queue.delete();
         pending_b.delete();
         pending_r.delete();
-        //Hoang Ho - clear partial interleaved read state on reset
+        //Hoang Ho: clear partial interleaved read state on reset
         pending_r_beat.delete();
     endfunction : flush_queues
 
@@ -335,7 +334,7 @@ class axi4_master_monitor extends uvm_monitor;
     // report_phase - incomplete transactions are functional failures
     // =========================================================================
     function void report_phase(uvm_phase phase);
-        //Hoang Ho - A clean learning-VIP run must not leave channel state pending.
+        //Hoang Ho: A clean learning-VIP run must not leave channel state pending.
         if (aw_queue.size() > 0)
             `uvm_error(get_type_name(),
                          $sformatf("%0d unmatched AW transactions at end of sim",

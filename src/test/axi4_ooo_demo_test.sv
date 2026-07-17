@@ -33,10 +33,9 @@ class axi4_ooo_demo_test extends axi4_base_test;
     // =========================================================================
     function void build_phase(uvm_phase phase);
         super.build_phase(phase);
-        //Hoang Ho - BEGIN: set the common agent config after base-test setup.
+        //Hoang Ho: set the common agent config after base-test setup.
         env_cfg.slave_agent_cfg.r_reorder_enable  = 1'b1;
         env_cfg.slave_agent_cfg.r_outstanding_max = (depth == 0) ? 1 : depth;
-        //Hoang Ho - END: set the common agent config
     endfunction : build_phase
 
     // =========================================================================

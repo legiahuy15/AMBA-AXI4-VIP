@@ -43,7 +43,7 @@ class axi4_exclusive_seq extends axi4_base_sequence;
             end
             target_id = $urandom_range(id_hi, id_lo);
 
-            `uvm_info(get_type_name(), $sformatf("[%0d/%0d] Running Exclusive Read-Write pair to ADDR=0x%08h ID=0x%0h", 
+            `uvm_info(get_type_name(), $sformatf("[%0d/%0d] Running Exclusive Read-Write pair to ADDR=0x%08h ID=0x%0h",
                                                  i + 1, num_iterations, target_addr, target_id), UVM_MEDIUM)
 
             // Phase 1: Exclusive Read
@@ -92,7 +92,7 @@ class axi4_exclusive_seq extends axi4_base_sequence;
             }) `uvm_fatal(get_type_name(), "Randomization failed for failing exclusive write")
             finish_item(fail_wr_tr);
 
-            `uvm_info(get_type_name(), $sformatf("Failing Exclusive Write complete: RESP=%s (Expected OKAY, no EXOKAY)", 
+            `uvm_info(get_type_name(), $sformatf("Failing Exclusive Write complete: RESP=%s (Expected OKAY, no EXOKAY)",
                                                  fail_wr_tr.resp.name()), UVM_HIGH)
         end
 

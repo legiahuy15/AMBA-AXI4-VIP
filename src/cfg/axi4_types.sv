@@ -8,19 +8,25 @@
 // Project     : AXI4 VIP
 // Author      : Huy Le
 // Description : AXI4 protocol parameters, enums, and typedefs.
-//               All values follow ARM AMBA AXI4 specification (IHI0022E).
+//               All values follow ARM AMBA AXI4 specification (IHI0022H.c).
 //               This file is `included inside axi4_pkg.sv - do NOT add
 //               package/endpackage here.
 //==============================================================================
 
+// Huy Le: original architecture and baseline implementation.
+
+    // Hoang Ho: compile-time widths are shared with axi4_if, axi4_sva and tb_top.
+    `include "cfg/axi4_compile_cfg.svh"
+
     //-------------------------------------------------------------------------
     // 1. Bus-width parameters
     //-------------------------------------------------------------------------
-    parameter AXI4_ADDR_WIDTH = 32;                    // Address bus width
-    parameter AXI4_DATA_WIDTH = 32;                    // Data bus width
-    parameter AXI4_STRB_WIDTH = AXI4_DATA_WIDTH / 8;   // 1 strobe bit per byte lane
-    parameter AXI4_ID_WIDTH   = 4;                     // Transaction ID width
-    parameter AXI4_LEN_WIDTH  = 8;                     // Burst length field (AXI4 = 8-bit)
+    parameter AXI4_ADDR_WIDTH = `AXI4_ADDR_WIDTH_CFG;
+    parameter AXI4_DATA_WIDTH = `AXI4_DATA_WIDTH_CFG;
+    parameter AXI4_STRB_WIDTH = AXI4_DATA_WIDTH / 8;
+    parameter AXI4_ID_WIDTH   = `AXI4_ID_WIDTH_CFG;
+    parameter AXI4_LEN_WIDTH  = 8;
+    localparam int unsigned AXI4_MAX_SIZE = $clog2(AXI4_STRB_WIDTH);
 
     //-------------------------------------------------------------------------
     // 2. Burst type
@@ -59,7 +65,7 @@
     typedef enum bit [2:0] {
         AXI4_SIZE_1B   = 3'b000,   //   1 byte  per transfer
         AXI4_SIZE_2B   = 3'b001,   //   2 bytes per transfer
-        AXI4_SIZE_4B   = 3'b010,   //   4 bytes per transfer  ← max for 32-bit bus
+        AXI4_SIZE_4B   = 3'b010,   //   4 bytes per transfer
         AXI4_SIZE_8B   = 3'b011,   //   8 bytes per transfer
         AXI4_SIZE_16B  = 3'b100,   //  16 bytes per transfer
         AXI4_SIZE_32B  = 3'b101,   //  32 bytes per transfer
@@ -108,12 +114,52 @@
         event ev;
     endclass
 
-    //Hoang Ho - BEGIN: shared AXI4 address, lane, and 4KB helper functions
+    // Hoang Ho: shared AXI4 address, lane, and 4KB helper functions
     // These helpers centralize the functional rules used by the transaction,
     // slave model, scoreboard, and coverage. Keeping one implementation avoids
     // common-mode drift between components.
     typedef bit [AXI4_ADDR_WIDTH-1:0] axi4_addr_t;
+    typedef bit [AXI4_DATA_WIDTH-1:0] axi4_data_t;
     typedef bit [AXI4_STRB_WIDTH-1:0] axi4_strb_t;
+    typedef bit [AXI4_ID_WIDTH-1:0]   axi4_id_t;
+
+    function automatic bit axi4_supported_data_width();
+        return AXI4_DATA_WIDTH inside {32, 64, 128, 256, 512, 1024};
+    endfunction : axi4_supported_data_width
+
+    function automatic axi4_size_e axi4_full_bus_size();
+        return axi4_size_e'(AXI4_MAX_SIZE);
+    endfunction : axi4_full_bus_size
+
+    // Hoang Ho: deterministic byte pattern that exercises every lane at every width.
+    function automatic axi4_data_t axi4_make_data_pattern(
+        int unsigned tag,
+        int unsigned beat_idx
+    );
+        axi4_data_t value;
+        value = '0;
+        for (int lane = 0; lane < AXI4_STRB_WIDTH; lane++)
+            value[lane*8 +: 8] = byte'((tag + beat_idx*AXI4_STRB_WIDTH + lane) & 8'hFF);
+        return value;
+    endfunction : axi4_make_data_pattern
+
+    // Huy Le: several directed demos used recognizable 32-bit constants.
+    // Hoang Ho: retain the original value in bits [31:0], then fill every
+    // additional 32-bit chunk with a deterministic variant. At DATA_WIDTH=32
+    // the waveform is unchanged; wider profiles no longer leave upper lanes 0.
+    function automatic axi4_data_t axi4_expand_legacy_word(
+        bit [31:0]    legacy_word,
+        int unsigned beat_idx
+    );
+        axi4_data_t value;
+        value = '0;
+        for (int chunk = 0; chunk < AXI4_DATA_WIDTH/32; chunk++) begin
+            value[chunk*32 +: 32] = legacy_word
+                                   + beat_idx
+                                   + (32'h0101_0101 * chunk);
+        end
+        return value;
+    endfunction : axi4_expand_legacy_word
 
     function automatic int unsigned axi4_num_bytes(bit [2:0] size_i);
         return (1 << size_i);
@@ -254,4 +300,3 @@
 
         return ((first_byte >> 12) != (last_byte >> 12));
     endfunction : axi4_burst_crosses_4kb
-    //Hoang Ho - END: shared AXI4 address, lane, and 4KB helper functions

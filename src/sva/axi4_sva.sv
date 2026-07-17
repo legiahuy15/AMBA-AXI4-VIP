@@ -13,11 +13,13 @@
 //=============================================================================
 
 `timescale 1ns/1ps
+`include "cfg/axi4_compile_cfg.svh"
 
+//Huy Le: original architecture and baseline implementation.
 module axi4_sva #(
-    parameter ADDR_WIDTH = 32,
-    parameter DATA_WIDTH = 32,
-    parameter ID_WIDTH   = 4
+    parameter ADDR_WIDTH = `AXI4_ADDR_WIDTH_CFG,
+    parameter DATA_WIDTH = `AXI4_DATA_WIDTH_CFG,
+    parameter ID_WIDTH   = `AXI4_ID_WIDTH_CFG
 )(
     input logic                     clk,
     input logic                     rst_n,
@@ -78,7 +80,7 @@ module axi4_sva #(
     localparam STRB_WIDTH = DATA_WIDTH / 8;
 
 
-    //Hoang Ho - BEGIN: local AXI4 helper functions used by protocol assertions
+    //Hoang Ho: local AXI4 helper functions used by protocol assertions
     function automatic longint unsigned f_num_bytes(logic [2:0] size_i);
         return (64'd1 << size_i);
     endfunction : f_num_bytes
@@ -172,7 +174,6 @@ module axi4_sva #(
                 mask[lane] = 1'b1;
         return mask;
     endfunction : f_legal_wstrb_mask
-    //Hoang Ho - END: local AXI4 helper functions used by protocol assertions
 
     //-------------------------------------------------------------------------
     // Internal state tracking
@@ -282,7 +283,7 @@ module axi4_sva #(
     //-------------------------------------------------------------------------
     // PAYLOAD STABILITY - signals must be stable while VALID && !READY
     //    The source must not change the information it is signaling
-    //    while VALID is asserted 
+    //    while VALID is asserted
     //-------------------------------------------------------------------------
 
     // AW Channel payload
@@ -295,7 +296,7 @@ module axi4_sva #(
             $stable(AWQOS)    && $stable(AWREGION);
     endproperty
 
-    //Hoang Ho - BEGIN: first-stall-cycle-safe W payload stability check
+    //Hoang Ho: first-stall-cycle-safe W payload stability check
     // If a W beat is stalled, the same beat and WVALID must still be present at
     // the next clock edge. A payload change is legal only after a handshake.
     property p_w_payload_stable;
@@ -303,7 +304,6 @@ module axi4_sva #(
         WVALID && !WREADY |=>
             WVALID && $stable(WDATA) && $stable(WSTRB) && $stable(WLAST);
     endproperty
-    //Hoang Ho - END: first-stall-cycle-safe W payload stability check
 
     // B Channel payload
     property p_b_payload_stable;
@@ -443,7 +443,7 @@ module axi4_sva #(
     int unsigned ar_len_fifo[logic [ID_WIDTH-1:0]][$];
     int unsigned r_beat_cnt[logic [ID_WIDTH-1:0]];
 
-    //Hoang Ho - BEGIN: transaction-aware BVALID/BID dependency tracker
+    //Hoang Ho: transaction-aware BVALID/BID dependency tracker
     // W data has no ID in AXI4, so completed W bursts pair with accepted AW
     // requests in AW order. A B response becomes legal only after one such
     // address/data pair existed before the current clock edge. Different BID
@@ -509,7 +509,6 @@ module axi4_sva #(
             end
         end
     end
-    //Hoang Ho - END: transaction-aware BVALID/BID dependency tracker
 
     // Track AW/W handshakes and check WLAST positioning. AW is captured before
     // the W check, so an AW handshaking on the same edge is reflected when that
@@ -584,7 +583,7 @@ module axi4_sva #(
             ar_len_fifo.delete();
             r_beat_cnt.delete();
         end else begin
-            //Hoang Ho - BEGIN: enforce AR-before-R using pre-edge outstanding state
+            //Hoang Ho: enforce AR-before-R using pre-edge outstanding state
             // A newly handshaken AR on this same edge cannot justify RVALID that
             // was already HIGH before the edge. Therefore R is checked before
             // the current AR request is appended.
@@ -629,7 +628,6 @@ module axi4_sva #(
             // Capture this cycle's AR only after all R checks above.
             if (ARVALID && ARREADY)
                 ar_len_fifo[ARID].push_back(ARLEN);
-            //Hoang Ho - END: enforce AR-before-R using pre-edge outstanding state
         end
     end
 
@@ -676,7 +674,7 @@ module axi4_sva #(
         else $error("[SVA] ARSIZE exceeds data bus width (2^%0d > %0d bytes)",
                     ARSIZE, DATA_WIDTH / 8);
 
-    //Hoang Ho - BEGIN: exact 4KB boundary checks for FIXED/INCR/WRAP
+    //Hoang Ho: exact 4KB boundary checks for FIXED/INCR/WRAP
     property p_aw_4kb_boundary;
         @(posedge clk) disable iff (!rst_n)
         (AWVALID && AWREADY) |->
@@ -696,7 +694,6 @@ module axi4_sva #(
     AR_4KB_BOUNDARY : assert property (p_ar_4kb_boundary)
         else $error("[SVA] AR burst crosses 4KB boundary: ARADDR=0x%08h ARLEN=%0d ARSIZE=%0d ARBURST=%0b",
                     ARADDR, ARLEN, ARSIZE, ARBURST);
-    //Hoang Ho - END: exact 4KB boundary checks for FIXED/INCR/WRAP
 
     //-------------------------------------------------------------------------
     // WRAP BURST - length must be 2, 4, 8, or 16 (LEN = 1, 3, 7, 15)
@@ -721,7 +718,7 @@ module axi4_sva #(
         else $error("[SVA] WRAP burst ARLEN=%0d is invalid (must be 1,3,7,15)", ARLEN);
 
 
-    //Hoang Ho - BEGIN: AXI4 WRAP start-address alignment checks
+    //Hoang Ho: AXI4 WRAP start-address alignment checks
     property p_wrap_aw_align;
         @(posedge clk) disable iff (!rst_n)
         (AWVALID && AWREADY && AWBURST == 2'b10) |->
@@ -739,7 +736,6 @@ module axi4_sva #(
 
     WRAP_AR_ALIGN : assert property (p_wrap_ar_align)
         else $error("[SVA] WRAP ARADDR=0x%08h is not aligned to ARSIZE=%0d", ARADDR, ARSIZE);
-    //Hoang Ho - END: AXI4 WRAP start-address alignment checks
 
     //-------------------------------------------------------------------------
     // FIXED BURST - length must not exceed 16 (LEN <= 15)
@@ -761,7 +757,7 @@ module axi4_sva #(
     FIXED_AR_LEN : assert property (p_fixed_ar_len)
         else $error("[SVA] FIXED burst ARLEN=%0d exceeds maximum of 15", ARLEN);
 
-    //Hoang Ho - BEGIN: EXOKAY legality and WSTRB lane checks
+    //Hoang Ho: EXOKAY legality and WSTRB lane checks
     logic aw_exclusive_by_id[logic [ID_WIDTH-1:0]][$];
     logic ar_exclusive_by_id[logic [ID_WIDTH-1:0]][$];
 
@@ -877,7 +873,6 @@ module axi4_sva #(
             end
         end
     end
-    //Hoang Ho - END: EXOKAY legality and WSTRB lane checks
 
     //-------------------------------------------------------------------------
     // RESPONSE VALUE - BRESP/RRESP must be valid
@@ -901,7 +896,7 @@ module axi4_sva #(
     RRESP_KNOWN : assert property (p_rresp_known)
         else $error("[SVA] RRESP is X or Z at handshake");
 
-    //Hoang Ho - BEGIN: legal read interleaving observation
+    //Hoang Ho: legal read interleaving observation
     // AXI4 permits R beats from different IDs to interleave. Same-ID ordering
     // is checked by the AR/R per-ID FIFOs above, so RID changes are evidence to
     // cover rather than protocol violations.
@@ -909,26 +904,37 @@ module axi4_sva #(
     logic [ID_WIDTH-1:0]     previous_rid;
     logic                    previous_r_was_last;
     logic                    r_interleave_pulse;
+    logic                    r_stall_seen;
+    logic                    r_interleave_after_stall_pulse;
 
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             have_previous_r_beat <= 1'b0;
             previous_rid         <= '0;
             previous_r_was_last  <= 1'b1;
-            r_interleave_pulse   <= 1'b0;
+            r_interleave_pulse             <= 1'b0;
+            r_stall_seen                    <= 1'b0;
+            r_interleave_after_stall_pulse <= 1'b0;
         end else begin
-            r_interleave_pulse <= 1'b0;
+            r_interleave_pulse             <= 1'b0;
+            r_interleave_after_stall_pulse <= 1'b0;
+            if (RVALID && !RREADY)
+                r_stall_seen <= 1'b1;
             if (RVALID && RREADY) begin
                 r_interleave_pulse <= have_previous_r_beat &&
                                       !previous_r_was_last &&
                                       (RID != previous_rid);
+                r_interleave_after_stall_pulse <= r_stall_seen &&
+                                                  have_previous_r_beat &&
+                                                  !previous_r_was_last &&
+                                                  (RID != previous_rid);
+                r_stall_seen <= 1'b0;
                 have_previous_r_beat <= 1'b1;
                 previous_rid         <= RID;
                 previous_r_was_last  <= RLAST;
             end
         end
     end
-    //Hoang Ho - END: legal read interleaving observation
 
     //-------------------------------------------------------------------------
     // COVER PROPERTIES - Track protocol scenarios for functional coverage
@@ -940,8 +946,10 @@ module axi4_sva #(
     B_HANDSHAKE_COV  : cover property (@(posedge clk) disable iff (!rst_n) BVALID  && BREADY);
     AR_HANDSHAKE_COV : cover property (@(posedge clk) disable iff (!rst_n) ARVALID && ARREADY);
     R_HANDSHAKE_COV  : cover property (@(posedge clk) disable iff (!rst_n) RVALID  && RREADY);
-    //Hoang Ho - legal cross-ID read-data interleaving evidence
+    //Hoang Ho: legal cross-ID read-data interleaving evidence
     R_INTERLEAVE_DIFF_ID_COV : cover property (@(posedge clk) disable iff (!rst_n) r_interleave_pulse);
+    R_INTERLEAVE_AFTER_STALL_COV : cover property (@(posedge clk) disable iff (!rst_n)
+                                                          r_interleave_after_stall_pulse);
 
     // Back-pressure coverage (VALID && !READY - stall cycle)
     AW_BACKPRESSURE_COV : cover property (@(posedge clk) disable iff (!rst_n) AWVALID && !AWREADY);
@@ -968,7 +976,7 @@ module axi4_sva #(
 
 
 
-    //Hoang Ho - BEGIN: Additional SVA cover properties for 4KB and dependency hit evidence
+    //Hoang Ho: Additional SVA cover properties for 4KB and dependency hit evidence
     // 4KB boundary near-edge coverage
     AW_4KB_NEAR_COV : cover property (@(posedge clk) disable iff (!rst_n)
         AWVALID && AWREADY && AWADDR[11:0] >= 12'hF00);
@@ -979,6 +987,5 @@ module axi4_sva #(
     B_AFTER_AW_WLAST_COV : cover property (@(posedge clk) disable iff (!rst_n)
         BVALID && (aw_done_for_b > 0) && (wlast_done_for_b > 0));
     RVALID_COV : cover property (@(posedge clk) disable iff (!rst_n) RVALID);
-    //Hoang Ho - END: Additional SVA cover properties for 4KB and dependency hit evidence
 
 endmodule : axi4_sva

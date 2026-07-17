@@ -7,15 +7,16 @@
 //               then reads back from those exact addresses. On the waveform
 //               you can visually confirm WDATA == RDATA beat-by-beat.
 //
-//               Data patterns are chosen to be immediately recognisable:
-//                 Beat 0: 0xDEAD_BEEF
-//                 Beat 1: 0xCAFE_BABE
-//                 Beat 2: 0x1234_5678
-//                 Beat 3: 0xA5A5_A5A5
+//               The low 32 bits preserve Huy Le's recognizable constants.
+//               Hoang Ho expands them across every 32-bit chunk so all data
+//               lanes are exercised when DATA_WIDTH is greater than 32.
 //
 //               Total: 4 transactions (2 write + 2 read-back).
 //               This file is `included inside axi4_pkg.sv.
 //==============================================================================
+
+// Huy Le: original known-pattern data-integrity scenario.
+// Hoang Ho: full-width transfers and strobes scale with DATA_WIDTH.
 
 `ifndef AXI4_DATA_INTEGRITY_SEQ_INCLUDED_
 `define AXI4_DATA_INTEGRITY_SEQ_INCLUDED_
@@ -57,23 +58,27 @@ class axi4_data_integrity_seq extends axi4_base_sequence;
             dir   == AXI4_WRITE;
             addr  == 32'h0000_C000;
             len   == 3;                      // 4 beats
-            size  == AXI4_SIZE_4B;
+            size  == axi4_size_e'(AXI4_MAX_SIZE);
             burst == AXI4_BURST_INCR;
             id    == 4'hC;
             lock  == AXI4_LOCK_NORMAL;        // Normal write so ref-mem commits it
-            // Fixed recognisable data pattern
-            data[0] == 32'hDEAD_BEEF;
-            data[1] == 32'hCAFE_BABE;
-            data[2] == 32'h1234_5678;
-            data[3] == 32'hA5A5_A5A5;
-            // All bytes enabled
-            foreach (strb[i]) strb[i] == 4'b1111;
         }) `uvm_fatal(get_type_name(), "Randomization failed for integrity write #1")
+
+        // Hoang Ho: assign known data after randomization. This avoids asking
+        // older constraint solvers to evaluate wide helper functions.
+        wr_tr.data[0] = axi4_expand_legacy_word(32'hDEAD_BEEF, 0);
+        wr_tr.data[1] = axi4_expand_legacy_word(32'hCAFE_BABE, 1);
+        wr_tr.data[2] = axi4_expand_legacy_word(32'h1234_5678, 2);
+        wr_tr.data[3] = axi4_expand_legacy_word(32'hA5A5_A5A5, 3);
+        foreach (wr_tr.strb[i])
+            wr_tr.strb[i] = axi4_calc_legal_lane_mask(wr_tr.addr, i,
+                                                       wr_tr.size, wr_tr.burst,
+                                                       wr_tr.len);
         finish_item(wr_tr);
-        wait (wr_tr.completed); //Hoang Ho - persistent completion wait
+        wait (wr_tr.completed); // Hoang Ho: persistent completion wait
 
         `uvm_info(get_type_name(),
-                  $sformatf("WRITE #1 done: ADDR=0x%08h DATA={0x%08h, 0x%08h, 0x%08h, 0x%08h} RESP=%s",
+                  $sformatf("WRITE #1 done: ADDR=0x%08h DATA={0x%0h, 0x%0h, 0x%0h, 0x%0h} RESP=%s",
                             wr_tr.addr, wr_tr.data[0], wr_tr.data[1],
                             wr_tr.data[2], wr_tr.data[3], wr_tr.resp.name()),
                   UVM_MEDIUM)
@@ -85,16 +90,16 @@ class axi4_data_integrity_seq extends axi4_base_sequence;
             dir   == AXI4_READ;
             addr  == 32'h0000_C000;          // Same address
             len   == 3;                      // Same burst length
-            size  == AXI4_SIZE_4B;
+            size  == axi4_size_e'(AXI4_MAX_SIZE);
             burst == AXI4_BURST_INCR;
             id    == 4'hC;
             lock  == AXI4_LOCK_NORMAL;        // Normal read-back
         }) `uvm_fatal(get_type_name(), "Randomization failed for integrity read #1")
         finish_item(rd_tr);
-        wait (rd_tr.completed); //Hoang Ho - persistent completion wait
+        wait (rd_tr.completed); // Hoang Ho: persistent completion wait
 
         `uvm_info(get_type_name(),
-                  $sformatf("READ  #1 done: ADDR=0x%08h DATA={0x%08h, 0x%08h, 0x%08h, 0x%08h}",
+                  $sformatf("READ  #1 done: ADDR=0x%08h DATA={0x%0h, 0x%0h, 0x%0h, 0x%0h}",
                             rd_tr.addr, rd_tr.data[0], rd_tr.data[1],
                             rd_tr.data[2], rd_tr.data[3]),
                   UVM_MEDIUM)
@@ -105,7 +110,7 @@ class axi4_data_integrity_seq extends axi4_base_sequence;
             foreach (wr_tr.data[i]) begin
                 if (wr_tr.data[i] !== rd_tr.data[i]) begin
                     `uvm_error(get_type_name(),
-                               $sformatf("DATA MISMATCH beat[%0d]: wrote 0x%08h, read 0x%08h",
+                               $sformatf("DATA MISMATCH beat[%0d]: wrote 0x%0h, read 0x%0h",
                                          i, wr_tr.data[i], rd_tr.data[i]))
                     pass = 0;
                 end
@@ -130,18 +135,22 @@ class axi4_data_integrity_seq extends axi4_base_sequence;
             dir   == AXI4_WRITE;
             addr  == 32'h0000_D000;
             len   == 0;                      // Single beat
-            size  == AXI4_SIZE_4B;
+            size  == axi4_size_e'(AXI4_MAX_SIZE);
             burst == AXI4_BURST_INCR;
             id    == 4'hD;
             lock  == AXI4_LOCK_NORMAL;        // Normal write so ref-mem commits it
-            data[0] == 32'h5555_AAAA;
-            foreach (strb[i]) strb[i] == 4'b1111;
         }) `uvm_fatal(get_type_name(), "Randomization failed for integrity write #2")
+        // Hoang Ho: preserve 0x5555_AAAA in the low word and exercise all
+        // additional chunks on wide data buses.
+        wr_tr.data[0] = axi4_expand_legacy_word(32'h5555_AAAA, 0);
+        wr_tr.strb[0] = axi4_calc_legal_lane_mask(wr_tr.addr, 0,
+                                                  wr_tr.size, wr_tr.burst,
+                                                  wr_tr.len);
         finish_item(wr_tr);
-        wait (wr_tr.completed); //Hoang Ho - persistent completion wait
+        wait (wr_tr.completed); // Hoang Ho: persistent completion wait
 
         `uvm_info(get_type_name(),
-                  $sformatf("WRITE #2 done: ADDR=0x%08h DATA=0x%08h RESP=%s",
+                  $sformatf("WRITE #2 done: ADDR=0x%08h DATA=0x%0h RESP=%s",
                             wr_tr.addr, wr_tr.data[0], wr_tr.resp.name()),
                   UVM_MEDIUM)
 
@@ -152,16 +161,16 @@ class axi4_data_integrity_seq extends axi4_base_sequence;
             dir   == AXI4_READ;
             addr  == 32'h0000_D000;
             len   == 0;
-            size  == AXI4_SIZE_4B;
+            size  == axi4_size_e'(AXI4_MAX_SIZE);
             burst == AXI4_BURST_INCR;
             id    == 4'hD;
             lock  == AXI4_LOCK_NORMAL;        // Normal read-back
         }) `uvm_fatal(get_type_name(), "Randomization failed for integrity read #2")
         finish_item(rd_tr);
-        wait (rd_tr.completed); //Hoang Ho - persistent completion wait
+        wait (rd_tr.completed); // Hoang Ho: persistent completion wait
 
         `uvm_info(get_type_name(),
-                  $sformatf("READ  #2 done: ADDR=0x%08h DATA=0x%08h",
+                  $sformatf("READ  #2 done: ADDR=0x%08h DATA=0x%0h",
                             rd_tr.addr, rd_tr.data[0]),
                   UVM_MEDIUM)
 
@@ -172,7 +181,7 @@ class axi4_data_integrity_seq extends axi4_base_sequence;
                       UVM_LOW)
         else
             `uvm_error(get_type_name(),
-                       $sformatf("DATA MISMATCH: wrote 0x%08h, read 0x%08h",
+                       $sformatf("DATA MISMATCH: wrote 0x%0h, read 0x%0h",
                                  wr_tr.data[0], rd_tr.data[0]))
 
         `uvm_info(get_type_name(),

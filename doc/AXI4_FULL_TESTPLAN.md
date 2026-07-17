@@ -1,83 +1,99 @@
-<!-- Hoang Ho - Updated test plan for the AXI4 functional-compliance extension -->
-# AXI4 Full Learning VIP Test Plan
+# AXI4 Full VIP-to-VIP Test Plan
 
-## Positive regression
+## Test inventory
 
-| Test | Primary purpose | Key checks |
+- 30 UVM test classes.
+- 29 executable tests in the default regression.
+- 24 Huy Le baseline classes, including the infrastructure base test.
+- 6 Hoang Ho extension tests.
+
+See [`../README_FULL_TESTCASES.md`](../README_FULL_TESTCASES.md) for the full list.
+
+## Huy Le baseline tests
+
+Sanity, random, burst, narrow, unaligned, strobe, outstanding, OOO, exclusive, error, reset, integrity, write-order, and backpressure tests remain in `TEST_LIST`.
+
+## Hoang Ho tests
+
+| Test | Purpose | Pass criteria |
 |---|---|---|
-| `axi4_sanity_test` | basic write/read | five-channel flow and read-back |
-| `axi4_random_test` | random mixed traffic | general constraints and transaction matching |
-| `axi4_all_burst_type_test` | burst types | FIXED, INCR, WRAP |
-| `axi4_burst_sweep_test` | length/size sweep | beat count, LAST, address progression |
-| `axi4_narrow_burst_test` | narrow transfers | legal byte lanes for `AxSIZE < bus width` |
-| `axi4_unaligned_test` | unaligned first transfer | first-beat lane masking and address progression |
-| `axi4_strobe_test` | WSTRB patterns | full, partial, sparse, zero-subset behavior |
-| `axi4_4kb_boundary_test` | legal page-edge bursts | INCR/FIXED/WRAP exact 4KB rule |
-| `axi4_helper_unit_test` | pure helper vectors | unaligned masks, WRAP addresses, legal/illegal 4KB classification |
-| `axi4_spec_corner_test` | Hoang Ho directed functional gate | continuous WREADY, unaligned/narrow/FIXED/WRAP edge, same-ID order |
-| `axi4_outstanding_test` | multiple in-flight requests | pending queues and completion |
-| `axi4_out_of_order_test` | different-ID OOO | whole-burst OOO and ID matching |
-| `axi4_ooo_demo_test` | deterministic OOO waveform | AR order differs from RID completion order |
-| `axi4_back_to_back_test` | pipelined issue | adjacent handshakes without artificial gaps |
-| `axi4_backpressure_test` | subordinate backpressure | AWREADY/WREADY/ARREADY and response latency |
-| `axi4_response_backpressure_test` | manager backpressure | BREADY/RREADY stalls and response stability |
-| `axi4_wr_order_demo_test` | AW/W independence | parallel, AW-before-W, W-before-AW |
-| `axi4_wlast_before_aw_test` | leading W data | W burst buffered before AW |
-| `axi4_error_response_test` | error responses | SLVERR/DECERR and no failed-write commit |
-| `axi4_exclusive_test` | exclusive success | reservation and EXOKAY |
-| `axi4_exclusive_fail_test` | exclusive failure | invalidation and failed store |
-| `axi4_illegal_exclusive_test` | illegal exclusive attributes | checker errors/response policy |
-| `axi4_cache_prot_test` | optional attribute transport | stable/pass-through/cache-prot coverage |
-| `axi4_reset_mid_burst_test` | reset recovery | VALID reset, queue cleanup, no stale completion |
-| `axi4_data_integrity_test` | known data | byte-level write/read comparison |
-| `axi4_addr_integrity_test` | known address map | address-to-data mapping |
-| `axi4_exclusive_demo_test` | deterministic exclusive waveform | successful exclusive pair |
+| `axi4_helper_unit_test` | address/lane/4KB equations plus staged sequence legality | helpers match; legal edge tuple accepted; crossing tuple rejected |
+| `axi4_4kb_boundary_test` | legal and crossing page-edge bursts | legal accepted; crossing detected |
+| `axi4_spec_corner_test` | continuous WREADY and corrected corners | no duplicate beat or mismatch |
+| `axi4_response_backpressure_test` | B/R stalls | stable payload and complete drain |
+| `axi4_read_interleaving_test` | 3-RID interleaving and same-ID order | switches/stalls hit; data/RLAST correct |
+| `axi4_width_scaling_test` | 32..1024-bit data bus | full-width and every-lane read-back correct |
 
-## Directed vectors added by Hoang Ho
+## Width-generic improvements to baseline tests
 
-`axi4_helper_unit_test` checks these exact equations without depending on bus timing:
+| Huy Le scenario | Hoang Ho update |
+|---|---|
+| `axi4_data_integrity_test` | legacy low-word patterns expanded across every 32-bit chunk |
+| `axi4_exclusive_demo_test` | full-width exclusive transfer and legal width-scaled WSTRB |
+| `axi4_4kb_boundary_test` | deterministic seed data expanded across the full bus |
+| `axi4_spec_corner_test` | deterministic corner data expanded across the full bus |
+| narrow/unaligned tests | remain intentionally narrow; shared lane equations scale with bus width |
+| random/burst/outstanding tests | randomized data vectors scale with `AXI4_DATA_WIDTH` |
+| sanity/single read/single write sequences | sequence knobs mirror transaction size, FIXED/WRAP, and 4KB legality |
 
-- `ADDR=0x1`, `SIZE=4B`, first INCR beat -> legal lane mask `1110`.
-- `ADDR=0x3`, `SIZE=2B`, first INCR beat -> legal lane mask `1000`.
-- WRAP start `0x0FFC`, 4 beats x 4 bytes -> `0x0FFC, 0x0FF0, 0x0FF4, 0x0FF8`.
-- The page-edge WRAP above is legal and does not cross 4KB.
-- INCR start `0x0FF4`, 4 beats x 4 bytes crosses 4KB and is illegal.
+## Read-interleaving scenarios
 
-`axi4_spec_corner_test` adds bus-level read-back for the same lane/address cases, keeps WREADY continuously HIGH to detect duplicated W beats, and issues two same-ID reads concurrently to prove response order.
+1. Three different IDs use mixed 8-, 4-, and 2-beat INCR reads.
+2. RID changes before the previous burst reaches RLAST.
+3. `RREADY` stalls for 1–3 cycles; payload remains stable.
+4. Two reads with the same ID remain FIFO ordered.
+5. Scoreboard and monitors reconstruct each burst by RID with zero mismatch.
 
-## Negative/SVA lane
+## Width scenarios
 
-Negative runs must be reported separately from the all-pass positive regression.
+For every supported width:
 
-| Negative scenario | Current mechanism | Pass criterion |
-|---|---|---|
-| missing/late WLAST with W-before-AW | `make sva_unit` | expected assertion fires only in the intentional violation phase |
-| reserved AxBURST | SVA | `AWBURST_VALID`/`ARBURST_VALID` fires |
-| invalid size | SVA | `AWSIZE_VALID`/`ARSIZE_VALID` fires |
-| illegal WRAP length/alignment | SVA | WRAP assertions fire |
-| 4KB crossing | SVA/helper | boundary checker fires |
-| WSTRB outside legal lanes | SVA/slave/scoreboard | checker reports error, memory not committed |
-| premature BVALID/BID | transaction-aware SVA | no eligible completed write assertion fires |
-| premature RVALID/RID | per-ID SVA | no prior AR assertion fires |
-| EXOKAY on normal access | SVA | EXOKAY legality assertion fires |
+1. Full-width INCR beats write/read unique data in every lane.
+2. A 1-byte INCR burst visits every byte lane once.
+3. Read interleaving is repeated at the compiled width.
+4. All 29 executable tests are run by the all-width regression.
 
-## Required commands
+## Simplified campaigns
+
+| Command | Scope | Default runs |
+|---|---|---:|
+| `make run TESTNAME=<t> DATA_WIDTH=<w> SEED=random` | one reproducible run | 1 |
+| `make regress DATA_WIDTH=<w> NUM_RUNS=1` | all tests at one width | 29 |
+| `make regress DATA_WIDTH=32 NUM_RUNS=5 JOBS=8` | baseline randomized regression | 145 |
+| `make regress DATA_WIDTH=ALL NUM_RUNS=1 JOBS=8` | all tests at all widths | 174 |
+| `make regress_all NUM_RUNS=5 JOBS=8` | five seeds at all widths | 870 |
+
+## Result preservation
+
+```text
+results/regress/w<width>/
+results/regress_all/w32/ ... w1024/
+results/regress_all/summary.txt
+```
+
+Each regression directory contains compile/optimization logs, per-run logs, status markers, coverage when enabled, and a summary. Parallel regression does not dump VCD by default. Different widths use independent elaborated models and independent coverage directories.
+
+## SVA and coverage targets
+
+- address/control/data stability during stalls;
+- B only after accepted AW and final W;
+- R only after an outstanding AR for that RID;
+- per-RID RLAST count;
+- legal AxSIZE, burst type, WRAP length/alignment, and 4KB boundary;
+- legal WSTRB lanes;
+- EXOKAY only for exclusive accesses;
+- different-RID interleaving and interleaving after an R stall;
+- start-lane, full-width, and narrow-size coverage;
+- legal/illegal page-edge randomization for write-read-back, single-write, and single-read wrappers.
+
+## Publication gate
 
 ```bash
 cd sim
-make clean
-make spec_smoke
-make -j8 regress NUM_RUNS=5
-make cov_report
+make clean_all
+make regress DATA_WIDTH=ALL NUM_RUNS=1 JOBS=8
+make regress DATA_WIDTH=32 NUM_RUNS=5 JOBS=8
+make cov_report DATA_WIDTH=32
 ```
 
-For focused debug:
-
-```bash
-make run TESTNAME=axi4_spec_corner_test SEED=1
-make run TESTNAME=axi4_helper_unit_test SEED=1
-make run TESTNAME=axi4_response_backpressure_test SEED=22883092
-make run TESTNAME=axi4_response_backpressure_test SEED=68865829
-```
-
-The Makefile returns non-zero when the simulator fails or the UVM summary contains any non-zero UVM_ERROR/UVM_FATAL count.
+The result must contain zero unexpected `UVM_ERROR`/`UVM_FATAL`, zero scoreboard mismatch, no pending transaction, and the exact expected PASS-marker count.

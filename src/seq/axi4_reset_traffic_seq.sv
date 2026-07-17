@@ -15,6 +15,9 @@
 //               This file is `included inside axi4_pkg.sv.
 //==============================================================================
 
+//Huy Le: original reset-under-load scenario.
+//Hoang Ho: full-width, bus-aligned traffic scales with DATA_WIDTH.
+
 `ifndef AXI4_RESET_TRAFFIC_SEQ_INCLUDED_
 `define AXI4_RESET_TRAFFIC_SEQ_INCLUDED_
 
@@ -49,8 +52,9 @@ class axi4_reset_traffic_seq extends axi4_base_sequence;
                 dir   inside {AXI4_READ, AXI4_WRITE};
                 addr  inside {[32'h0000_8000 : 32'h0000_8FFF]};
                 burst == AXI4_BURST_INCR;
-                size  == AXI4_SIZE_4B;
-                len   inside {3, 7};                 // multi-beat -> reset can hit mid-burst
+                size  == axi4_size_e'(AXI4_MAX_SIZE);
+                len   inside {3, 7};
+                (addr % AXI4_STRB_WIDTH) == 0;                 // multi-beat -> reset can hit mid-burst
                 lock  == AXI4_LOCK_NORMAL;
             }) `uvm_fatal(get_type_name(), "Randomization failed in reset traffic seq")
             finish_item(tr);

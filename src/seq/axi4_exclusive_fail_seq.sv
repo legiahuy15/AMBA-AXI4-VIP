@@ -49,7 +49,7 @@ class axi4_exclusive_fail_seq extends axi4_base_sequence;
             size  == AXI4_SIZE_4B;
             len   == 0;
 
-            //Hoang Ho - BEGIN: keep exclusive attributes deterministic
+            //Hoang Ho: keep exclusive attributes deterministic
             // The enhanced slave model matches exclusive reservations using:
             // ID, address, size, length, burst, cache, prot and region.
             // Therefore these attributes must be fixed so the exclusive read
@@ -57,7 +57,6 @@ class axi4_exclusive_fail_seq extends axi4_base_sequence;
             cache  == 4'h3;
             prot   == 3'b000;
             region == 4'h0;
-            //Hoang Ho - END: keep exclusive attributes deterministic
 
             foreach (strb[i]) strb[i] == '1;
         }) begin
@@ -66,7 +65,7 @@ class axi4_exclusive_fail_seq extends axi4_base_sequence;
 
         finish_item(tr);
 
-        wait (tr.completed); //Hoang Ho - persistent completion wait
+        wait (tr.completed); //Hoang Ho: persistent completion wait
 
         tr_out = tr;
     endtask : send_txn

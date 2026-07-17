@@ -10,6 +10,9 @@
 //               This file is `included inside axi4_pkg.sv.
 //==============================================================================
 
+//Huy Le: original sequence structure and burst demonstration.
+//Hoang Ho: full-width size, WSTRB, and WRAP address scale with DATA_WIDTH.
+
 `ifndef AXI4_ALL_BURST_TYPE_SEQ_INCLUDED_
 `define AXI4_ALL_BURST_TYPE_SEQ_INCLUDED_
 
@@ -45,13 +48,13 @@ class axi4_all_burst_type_seq extends axi4_base_sequence;
             dir   == AXI4_WRITE;
             addr  == 32'h0000_6000;
             len   == 3;              // 4 beats
-            size  == AXI4_SIZE_4B;
+            size  == axi4_size_e'(AXI4_MAX_SIZE);
             burst == AXI4_BURST_FIXED;
             id    == 4'h6;
-            foreach (strb[i]) strb[i] == 4'b1111;
+            foreach (strb[i]) strb[i] == '1;
         }) `uvm_fatal(get_type_name(), "Randomization failed for FIXED write")
         finish_item(wr_tr);
-        wait (wr_tr.completed); //Hoang Ho - persistent completion wait
+        wait (wr_tr.completed); //Hoang Ho: persistent completion wait
 
         rd_tr = axi4_transaction::type_id::create("fixed_rd_tr");
         start_item(rd_tr);
@@ -59,12 +62,12 @@ class axi4_all_burst_type_seq extends axi4_base_sequence;
             dir   == AXI4_READ;
             addr  == 32'h0000_6000;
             len   == 3;
-            size  == AXI4_SIZE_4B;
+            size  == axi4_size_e'(AXI4_MAX_SIZE);
             burst == AXI4_BURST_FIXED;
             id    == 4'h6;
         }) `uvm_fatal(get_type_name(), "Randomization failed for FIXED read")
         finish_item(rd_tr);
-        wait (rd_tr.completed); //Hoang Ho - persistent completion wait
+        wait (rd_tr.completed); //Hoang Ho: persistent completion wait
 
         `uvm_info(get_type_name(),
                   $sformatf("FIXED pair done: ADDR=0x%08h BRESP=%s",
@@ -73,7 +76,7 @@ class axi4_all_burst_type_seq extends axi4_base_sequence;
         // =================================================================
         // Pair 2: INCR burst (address increments by transfer size each beat)
         //   Most common burst type in practice.
-        //   On waveform: address increments by 4 each beat (SIZE=4B).
+        //   On waveform: address increments by the compiled full-bus transfer size.
         // =================================================================
         wr_tr = axi4_transaction::type_id::create("incr_wr_tr");
         start_item(wr_tr);
@@ -81,13 +84,13 @@ class axi4_all_burst_type_seq extends axi4_base_sequence;
             dir   == AXI4_WRITE;
             addr  == 32'h0000_7000;
             len   == 3;              // 4 beats
-            size  == AXI4_SIZE_4B;
+            size  == axi4_size_e'(AXI4_MAX_SIZE);
             burst == AXI4_BURST_INCR;
             id    == 4'h7;
-            foreach (strb[i]) strb[i] == 4'b1111;
+            foreach (strb[i]) strb[i] == '1;
         }) `uvm_fatal(get_type_name(), "Randomization failed for INCR write")
         finish_item(wr_tr);
-        wait (wr_tr.completed); //Hoang Ho - persistent completion wait
+        wait (wr_tr.completed); //Hoang Ho: persistent completion wait
 
         rd_tr = axi4_transaction::type_id::create("incr_rd_tr");
         start_item(rd_tr);
@@ -95,12 +98,12 @@ class axi4_all_burst_type_seq extends axi4_base_sequence;
             dir   == AXI4_READ;
             addr  == 32'h0000_7000;
             len   == 3;
-            size  == AXI4_SIZE_4B;
+            size  == axi4_size_e'(AXI4_MAX_SIZE);
             burst == AXI4_BURST_INCR;
             id    == 4'h7;
         }) `uvm_fatal(get_type_name(), "Randomization failed for INCR read")
         finish_item(rd_tr);
-        wait (rd_tr.completed); //Hoang Ho - persistent completion wait
+        wait (rd_tr.completed); //Hoang Ho: persistent completion wait
 
         `uvm_info(get_type_name(),
                   $sformatf("INCR pair done: ADDR=0x%08h BRESP=%s",
@@ -116,28 +119,28 @@ class axi4_all_burst_type_seq extends axi4_base_sequence;
         start_item(wr_tr);
         if (!wr_tr.randomize() with {
             dir   == AXI4_WRITE;
-            addr  == 32'h0000_8004;    // Aligned to 4B, mid-wrap boundary
+            addr  == axi4_addr_t'(32'h0000_8000 + AXI4_STRB_WIDTH); // one full-width beat into wrap container
             len   == 3;                // 4 beats (valid for WRAP)
-            size  == AXI4_SIZE_4B;
+            size  == axi4_size_e'(AXI4_MAX_SIZE);
             burst == AXI4_BURST_WRAP;
             id    == 4'h8;
-            foreach (strb[i]) strb[i] == 4'b1111;
+            foreach (strb[i]) strb[i] == '1;
         }) `uvm_fatal(get_type_name(), "Randomization failed for WRAP write")
         finish_item(wr_tr);
-        wait (wr_tr.completed); //Hoang Ho - persistent completion wait
+        wait (wr_tr.completed); //Hoang Ho: persistent completion wait
 
         rd_tr = axi4_transaction::type_id::create("wrap_rd_tr");
         start_item(rd_tr);
         if (!rd_tr.randomize() with {
             dir   == AXI4_READ;
-            addr  == 32'h0000_8004;
+            addr  == axi4_addr_t'(32'h0000_8000 + AXI4_STRB_WIDTH);
             len   == 3;
-            size  == AXI4_SIZE_4B;
+            size  == axi4_size_e'(AXI4_MAX_SIZE);
             burst == AXI4_BURST_WRAP;
             id    == 4'h8;
         }) `uvm_fatal(get_type_name(), "Randomization failed for WRAP read")
         finish_item(rd_tr);
-        wait (rd_tr.completed); //Hoang Ho - persistent completion wait
+        wait (rd_tr.completed); //Hoang Ho: persistent completion wait
 
         `uvm_info(get_type_name(),
                   $sformatf("WRAP pair done: ADDR=0x%08h BRESP=%s",

@@ -64,7 +64,7 @@ class axi4_illegal_exclusive_seq extends axi4_base_sequence;
         }) `uvm_fatal(get_type_name(),
                       $sformatf("Randomization failed for illegal exclusive (%s)", tag))
         finish_item(tr);
-        wait (tr.completed); //Hoang Ho - persistent completion wait
+        wait (tr.completed); //Hoang Ho: persistent completion wait
 
         num_illegal++;
         `uvm_info(get_type_name(),

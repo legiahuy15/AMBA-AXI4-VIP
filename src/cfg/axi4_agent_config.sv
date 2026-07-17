@@ -40,15 +40,17 @@ class axi4_agent_config extends uvm_object;
     int unsigned resp_delay_max  = 0;   // Slave: max cycles before B/R response
 
 
-    //Hoang Ho - BEGIN: learning-profile subordinate behavior knobs
+    //Hoang Ho: learning-profile subordinate behavior knobs
     // Defaults preserve Huy Le's original behavior. Directed tests can enable
     // continuously asserted WREADY and different-ID read response reordering.
     bit          wready_always_high = 0; // Slave keeps WREADY HIGH across a burst
-    bit          r_reorder_enable   = 0; // OOO completion is allowed across IDs
-    int unsigned r_outstanding_max  = 4; // Concurrent read response preparations
-    //Hoang Ho - END: learning-profile subordinate behavior knobs
+    bit          r_reorder_enable         = 0; // Whole-burst OOO across different IDs
+    bit          r_interleave_enable      = 0; // Beat-level interleaving across different IDs
+    int unsigned r_interleave_start_depth = 2; // Prefer this many active RIDs before first beat
+    int unsigned r_interleave_start_wait  = 8; // Bounded wait; avoids deadlock for one read
+    int unsigned r_outstanding_max        = 4; // Prepared read contexts held by the slave
 
-    //Hoang Ho - BEGIN: Master-side response backpressure configuration
+    //Hoang Ho: Master-side response backpressure configuration
     // =========================================================================
     // Master response back-pressure
     //   Only used by master agent. Controls random delay before asserting
@@ -59,7 +61,6 @@ class axi4_agent_config extends uvm_object;
     int unsigned bready_delay_max = 0;  // Master: max cycles before BREADY
     int unsigned rready_delay_min = 0;  // Master: min cycles before RREADY
     int unsigned rready_delay_max = 0;  // Master: max cycles before RREADY
-    //Hoang Ho - END: Master-side response backpressure configuration
 
     // =========================================================================
     // Constructor

@@ -10,9 +10,13 @@
 //                 2. Exclusive WRITE  -> BRESP = EXOKAY, commits (0x11111111)
 //                 3. Exclusive WRITE  -> BRESP = OKAY,  reservation gone,
 //                                        no commit (0x22222222 discarded)
-//               Known data + sequential phasing make the EXOKAY/OKAY story
-//               easy to read. This file is `included inside axi4_pkg.sv.
+//               Huy Le's known low-word data + sequential phasing make the
+//               EXOKAY/OKAY story easy to read. Hoang Ho expands the data
+//               across the compiled bus width. This file is `included inside axi4_pkg.sv.
 //==============================================================================
+
+// Huy Le: original three-phase exclusive-access teaching scenario.
+// Hoang Ho: full-width data patterns and legal WSTRB scale with DATA_WIDTH.
 
 `ifndef AXI4_EXCLUSIVE_DEMO_SEQ_INCLUDED_
 `define AXI4_EXCLUSIVE_DEMO_SEQ_INCLUDED_
@@ -44,12 +48,12 @@ class axi4_exclusive_demo_seq extends axi4_base_sequence;
             addr  == 32'h0000_1000;
             id    == 4'h5;
             len   == 0;
-            size  == AXI4_SIZE_4B;
+            size  == axi4_size_e'(AXI4_MAX_SIZE);
             burst == AXI4_BURST_INCR;
             lock  == AXI4_LOCK_EXCLUSIVE;
         }) `uvm_fatal(get_type_name(), "Randomization failed for exclusive read")
         finish_item(rd);
-        wait(rd.done_event.ev.triggered);
+        wait (rd.completed); // Hoang Ho: persistent completion state
         `uvm_info(get_type_name(),
                   $sformatf("Phase 1 [EXCL READ] done: RRESP=%s (expect EXOKAY)",
                             rd.rresp[0].name()), UVM_MEDIUM)
@@ -64,14 +68,17 @@ class axi4_exclusive_demo_seq extends axi4_base_sequence;
             addr  == 32'h0000_1000;
             id    == 4'h5;
             len   == 0;
-            size  == AXI4_SIZE_4B;
+            size  == axi4_size_e'(AXI4_MAX_SIZE);
             burst == AXI4_BURST_INCR;
             lock  == AXI4_LOCK_EXCLUSIVE;
-            data[0] == 32'h1111_1111;
-            foreach (strb[i]) strb[i] == '1;
         }) `uvm_fatal(get_type_name(), "Randomization failed for exclusive write #1")
+        // Hoang Ho: expand the original 0x11111111 waveform marker across all
+        // lanes, then enable exactly the bytes selected by AxSIZE/AxADDR.
+        wr1.data[0] = axi4_expand_legacy_word(32'h1111_1111, 0);
+        wr1.strb[0] = axi4_calc_legal_lane_mask(wr1.addr, 0, wr1.size,
+                                                wr1.burst, wr1.len);
         finish_item(wr1);
-        wait(wr1.done_event.ev.triggered);
+        wait (wr1.completed); // Hoang Ho: persistent completion state
         `uvm_info(get_type_name(),
                   $sformatf("Phase 2 [EXCL WRITE] done: BRESP=%s (expect EXOKAY)",
                             wr1.resp.name()), UVM_MEDIUM)
@@ -86,14 +93,17 @@ class axi4_exclusive_demo_seq extends axi4_base_sequence;
             addr  == 32'h0000_1000;
             id    == 4'h5;
             len   == 0;
-            size  == AXI4_SIZE_4B;
+            size  == axi4_size_e'(AXI4_MAX_SIZE);
             burst == AXI4_BURST_INCR;
             lock  == AXI4_LOCK_EXCLUSIVE;
-            data[0] == 32'h2222_2222;
-            foreach (strb[i]) strb[i] == '1;
         }) `uvm_fatal(get_type_name(), "Randomization failed for exclusive write #2")
+        // Hoang Ho: this second recognizable pattern must not commit because
+        // the successful exclusive write consumed the reservation.
+        wr2.data[0] = axi4_expand_legacy_word(32'h2222_2222, 0);
+        wr2.strb[0] = axi4_calc_legal_lane_mask(wr2.addr, 0, wr2.size,
+                                                wr2.burst, wr2.len);
         finish_item(wr2);
-        wait(wr2.done_event.ev.triggered);
+        wait (wr2.completed); // Hoang Ho: persistent completion state
         `uvm_info(get_type_name(),
                   $sformatf("Phase 3 [EXCL WRITE] done: BRESP=%s (expect OKAY, no commit)",
                             wr2.resp.name()), UVM_MEDIUM)

@@ -15,6 +15,7 @@
 //               This file is `included inside axi4_pkg.sv.
 //==============================================================================
 
+//Huy Le: original architecture and baseline implementation.
 class axi4_coverage extends uvm_subscriber #(axi4_transaction);
 
     `uvm_component_utils(axi4_coverage)
@@ -32,7 +33,7 @@ class axi4_coverage extends uvm_subscriber #(axi4_transaction);
     protected bit [3:0]                      m_cache;
     protected bit [2:0]                      m_prot;
     protected bit [3:0]                      m_qos;
-    //Hoang Ho - BEGIN: Extra coverage sampling state for region, 4KB boundary, and WSTRB legality
+    //Hoang Ho: Extra coverage sampling state for region, 4KB boundary, and WSTRB legality
     protected bit [3:0]                      m_region;
     protected axi4_resp_e                    m_resp;
     protected bit [AXI4_STRB_WIDTH-1:0]      m_strb;        // per-beat write strobe
@@ -40,11 +41,12 @@ class axi4_coverage extends uvm_subscriber #(axi4_transaction);
     protected bit                            m_near_4kb;     // start offset close to 4KB boundary
     protected bit                            m_cross_4kb;    // transaction crosses 4KB boundary
     protected bit                            m_strb_legal;   // per-beat WSTRB legality
-    //Hoang Ho - per-beat corner classification for narrow/unaligned coverage
+    //Hoang Ho: per-beat corner classification for narrow/unaligned coverage
     protected bit                            m_first_unaligned;
     protected bit                            m_narrow;
     protected int unsigned                   m_beat_idx;
-    //Hoang Ho - END: Extra coverage sampling state for region, 4KB boundary, and WSTRB legality
+    protected int unsigned                   m_start_lane;  //Hoang Ho: 0..STRB_WIDTH-1
+    protected bit                            m_full_width;  //Hoang Ho: AxSIZE equals bus width
 
     // =========================================================================
     // Covergroup 1: Transaction control fields & key crosses
@@ -63,8 +65,8 @@ class axi4_coverage extends uvm_subscriber #(axi4_transaction);
         }
 
         cp_size: coverpoint m_size {
-            bins sizes[] = {AXI4_SIZE_1B, AXI4_SIZE_2B, AXI4_SIZE_4B, 
-                            AXI4_SIZE_8B, AXI4_SIZE_16B, AXI4_SIZE_32B, 
+            bins sizes[] = {AXI4_SIZE_1B, AXI4_SIZE_2B, AXI4_SIZE_4B,
+                            AXI4_SIZE_8B, AXI4_SIZE_16B, AXI4_SIZE_32B,
                             AXI4_SIZE_64B, AXI4_SIZE_128B} with ((1 << item) <= (AXI4_DATA_WIDTH / 8));
         }
 
@@ -93,12 +95,11 @@ class axi4_coverage extends uvm_subscriber #(axi4_transaction);
             bins critical = {[12:15]};      // critical priority
         }
 
-        //Hoang Ho - BEGIN: Region coverage
+        //Hoang Ho: Region coverage
         cp_region: coverpoint m_region {
             bins regions[] = {[0:15]};
         }
 
-        //Hoang Ho - END: Region coverage
 
         cp_cache: coverpoint m_cache;       // auto-bins for all 16 values
 
@@ -125,8 +126,14 @@ class axi4_coverage extends uvm_subscriber #(axi4_transaction);
     //   Checks address range distribution and alignment relative to burst size.
     // =========================================================================
     covergroup cg_address;
-        cp_addr_low: coverpoint m_addr[1:0] {
-            bins byte_lanes[] = {[0:3]};
+        //Hoang Ho: lane coverage scales from 4 lanes (32-bit) to 128 lanes (1024-bit).
+        cp_start_lane: coverpoint m_start_lane {
+            bins lanes[] = {[0:AXI4_STRB_WIDTH-1]};
+        }
+
+        cp_full_width: coverpoint m_full_width {
+            bins narrow_or_partial = {1'b0};
+            bins full_bus          = {1'b1};
         }
 
         cp_addr_region: coverpoint m_addr[31:28] {
@@ -138,7 +145,7 @@ class axi4_coverage extends uvm_subscriber #(axi4_transaction);
             bins unaligned = {1'b0};
         }
 
-        //Hoang Ho - BEGIN: 4KB boundary coverage
+        //Hoang Ho: 4KB boundary coverage
         cp_near_4kb: coverpoint m_near_4kb {
             bins normal    = {1'b0};
             bins near_edge = {1'b1};
@@ -161,7 +168,6 @@ class axi4_coverage extends uvm_subscriber #(axi4_transaction);
         }
 
         cx_4kb_burst: cross cp_near_4kb, cp_burst;
-        //Hoang Ho - END: 4KB boundary coverage
     endgroup
 
     // =========================================================================
@@ -196,13 +202,13 @@ class axi4_coverage extends uvm_subscriber #(axi4_transaction);
             bins partial   = default;
         }
 
-        //Hoang Ho - BEGIN: WSTRB legal/illegal coverage
+        //Hoang Ho: WSTRB legal/illegal coverage
         cp_strb_legal: coverpoint m_strb_legal {
             bins legal = {1'b1};
             illegal_bins illegal = {1'b0};
         }
 
-        //Hoang Ho - BEGIN: targeted byte-lane corner coverage
+        //Hoang Ho: targeted byte-lane corner coverage
         cp_first_unaligned: coverpoint m_first_unaligned {
             bins other = {1'b0};
             bins first_unaligned = {1'b1};
@@ -212,8 +218,6 @@ class axi4_coverage extends uvm_subscriber #(axi4_transaction);
             bins narrow     = {1'b1};
         }
         cx_unaligned_narrow_legal: cross cp_first_unaligned, cp_narrow, cp_strb_legal;
-        //Hoang Ho - END: targeted byte-lane corner coverage
-        //Hoang Ho - END: WSTRB legal/illegal coverage
     endgroup
 
     // =========================================================================
@@ -227,7 +231,7 @@ class axi4_coverage extends uvm_subscriber #(axi4_transaction);
         cg_write_strobe = new();
     endfunction : new
 
-    //Hoang Ho - BEGIN: shared helper wrappers for coverage classification
+    //Hoang Ho: shared helper wrappers for coverage classification
     function bit [AXI4_ADDR_WIDTH-1:0] calc_beat_addr(
         bit [AXI4_ADDR_WIDTH-1:0] start_addr,
         int unsigned              beat_idx,
@@ -247,7 +251,6 @@ class axi4_coverage extends uvm_subscriber #(axi4_transaction);
     );
         return axi4_calc_legal_lane_mask(start_addr, beat_idx, size, burst, len);
     endfunction : calc_legal_wstrb_mask
-    //Hoang Ho - END: shared helper wrappers for coverage classification
 
     // =========================================================================
     // write() - called automatically by analysis_export for each transaction
@@ -267,11 +270,13 @@ class axi4_coverage extends uvm_subscriber #(axi4_transaction);
         m_prot   = t.prot;
         m_qos    = t.qos;
         m_region = t.region;
+        m_start_lane = t.addr % AXI4_STRB_WIDTH;
+        m_full_width = ((1 << t.size) == AXI4_STRB_WIDTH);
 
         // Compute address alignment and 4KB boundary classification
         m_addr_aligned = (t.addr % (1 << t.size)) == 0;
         m_near_4kb     = (t.addr[11:0] >= 12'hF00);
-        //Hoang Ho - use exact FIXED/INCR/WRAP container calculation.
+        //Hoang Ho: use exact FIXED/INCR/WRAP container calculation.
         m_cross_4kb    = axi4_burst_crosses_4kb(t.addr, t.size, t.burst, t.len);
 
         // Sample transaction-level covergroups

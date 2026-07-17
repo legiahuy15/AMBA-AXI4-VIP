@@ -12,6 +12,9 @@
 //               This file is `included inside axi4_pkg.sv.
 //==============================================================================
 
+//Huy Le: original back-to-back transaction scenario.
+//Hoang Ho: full-width transfers scale with DATA_WIDTH.
+
 `ifndef AXI4_BACK_TO_BACK_SEQ_INCLUDED_
 `define AXI4_BACK_TO_BACK_SEQ_INCLUDED_
 
@@ -51,10 +54,10 @@ class axi4_back_to_back_seq extends axi4_base_sequence;
                     dir   == AXI4_WRITE;
                     addr  == base_addr + (i * 32'h100);
                     len   == 1;                  // 2 beats (short burst)
-                    size  == AXI4_SIZE_4B;
+                    size  == axi4_size_e'(AXI4_MAX_SIZE);
                     burst == AXI4_BURST_INCR;
                     id    == i[3:0];
-                    foreach (strb[j]) strb[j] == 4'b1111;
+                    foreach (strb[j]) strb[j] == '1;
                 }) `uvm_fatal(get_type_name(),
                               $sformatf("Randomization failed for B2B write #%0d", i))
                 finish_item(wr_trs[i]);
@@ -66,7 +69,7 @@ class axi4_back_to_back_seq extends axi4_base_sequence;
                       UVM_MEDIUM)
 
             // Wait for the last write to complete before starting reads
-            wait (wr_trs[3].completed); //Hoang Ho - persistent completion wait
+            wait (wr_trs[3].completed); //Hoang Ho: persistent completion wait
         end
 
         // =================================================================
@@ -80,7 +83,7 @@ class axi4_back_to_back_seq extends axi4_base_sequence;
                 dir   == AXI4_READ;
                 addr  == base_addr + (i * 32'h100);
                 len   == 1;                  // 2 beats (matching writes)
-                size  == AXI4_SIZE_4B;
+                size  == axi4_size_e'(AXI4_MAX_SIZE);
                 burst == AXI4_BURST_INCR;
                 id    == i[3:0];
             }) `uvm_fatal(get_type_name(),
